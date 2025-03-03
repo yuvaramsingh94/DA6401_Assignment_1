@@ -74,12 +74,13 @@ class OutputLayer:
         self.L_theta_by_b = self.L_theta_by_a 
 
 class NeuralNetwork:
-    def __init__(self, input_neuron: int= 784, num_hidden_layers: int = 3, neurons_per_hidden_layer: list = [100,100,100], num_of_output_neuron: int = 10):
+    def __init__(self, input_neuron: int= 784, num_hidden_layers: int = 3, neurons_per_hidden_layer: list = [100,100,100], num_of_output_neuron: int = 10, learning_rate = 0.0001):
         self.input_neuron = input_neuron
         self.num_hidden_layers = num_hidden_layers
         assert self.num_hidden_layers == len(neurons_per_hidden_layer)
         self.neurons_per_hidden_layer = neurons_per_hidden_layer
         self.num_of_output_neuron = num_of_output_neuron
+        self.learning_rate = learning_rate
         ## Build the NN
         self.build_nn()
 
@@ -119,12 +120,21 @@ class NeuralNetwork:
                 layer["layer"].backpropagation(next_layer_w = reverse_layers[count - 1][-1]["layer"].weight, 
                                                next_layer_L_theta_by_a = reverse_layers[count - 1][-1]["layer"].L_theta_by_a, 
                                                prev_layer_h = reverse_layers[count + 1][-1]["layer"].h,)
+                
+    def update(self):
+        for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):   
+            layer["layer"].weight -= layer["layer"].L_theta_by_w * self.learning_rate
+            layer["layer"].bias -= layer["layer"].L_theta_by_b * self.learning_rate
+            ## do the update
 
 my_net = NeuralNetwork()
-op = my_net.forward_pass(np.expand_dims(x_train[0], axis = -1))
-# Calcualte the loss 
-cross_entropy(y_pred = op, y_label = y_train[0])
+
+for i in range(4):
+    op = my_net.forward_pass(np.expand_dims(x_train[0], axis = -1))
+    # Calcualte the loss 
+    print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[0]))
 
 
-my_net.backpropagation(x_train = np.expand_dims(x_train[0], axis = -1),
-                       y_label = np.expand_dims(y_train[0], axis = -1))
+    my_net.backpropagation(x_train = np.expand_dims(x_train[0], axis = -1),
+                        y_label = np.expand_dims(y_train[0], axis = -1))
+    my_net.update()
