@@ -1,6 +1,6 @@
 import numpy as np
 from keras.datasets import fashion_mnist
-
+import tqdm
 (x_train, y_train_int), (x_test, y_test_int) = fashion_mnist.load_data()
 
 ## One hot encode the Y
@@ -19,15 +19,20 @@ print("Test",x_test.shape,y_test.shape)
 
 
 def sigmoid(x: np.array) -> np.array:
+    x = np.clip(x, None, 709)  # Clip values at 709 to avoid overflow
     return 1/(1+np.exp(-x))
 
 def softmax(x: np.array) -> np.array:
+    x = np.clip(x, None, 709)  # Clip values at 709 to avoid overflow
     e_x = np.exp(x)
     return e_x/e_x.sum()
 
 def cross_entropy(y_pred: np.array, y_label: np.array) -> np.array:
-    dot_ = np.dot(y_label,np.log(y_pred))
+    epsilon = 1e-10
+    dot_ = y_label * np.log(y_pred + epsilon)
+    #dot_ = np.dot(y_label,np.log(y_pred))
     return -dot_.sum()
+
 
 
 class HiddenLayer:
@@ -39,21 +44,22 @@ class HiddenLayer:
         self.bias = np.random.normal(0, 1, size=(self.num_of_nodes,1))
 
     def forward(self, input):
-        self.a = np.matmul(self.weight, input) + self.bias ## Need to check the input shape?
+        temp = np.matmul(self.weight, input.T) 
+        self.a = temp + self.bias## Need to check the input shape?
         if self.activation == "sigmoid":
-            self.h = sigmoid(self.a)
+            self.h = sigmoid(self.a).T
 
     def backpropagation(self, next_layer_w: np.array, next_layer_L_theta_by_a: np.array, prev_layer_h: np.array):
-        self.L_theta_by_h = np.matmul(next_layer_w.T, next_layer_L_theta_by_a)
+        self.L_theta_by_h = np.matmul(next_layer_w.T, next_layer_L_theta_by_a.T)
         ## get the g hat function for the sigmoid function
         if self.activation == "sigmoid":
             ## Here is some problem with getting the g_hat
-            self.g_hat = np.dot(self.h.squeeze(), (1- self.h.squeeze()))
+            self.g_hat = np.multiply(self.h, (1- self.h))
         ## calculate the L_theta_by_a
         
-        self.L_theta_by_a = np.dot(self.L_theta_by_h, self.g_hat)## dummy placeholder
-        self.L_theta_by_w = np.matmul(self.L_theta_by_a, prev_layer_h.T)
-        self.L_theta_by_b = self.L_theta_by_a 
+        self.L_theta_by_a = np.multiply(self.L_theta_by_h.T, self.g_hat)
+        self.L_theta_by_w = np.matmul(self.L_theta_by_a.T, prev_layer_h)
+        self.L_theta_by_b = self.L_theta_by_a.sum(axis=0) 
 class OutputLayer:
     def __init__(self, num_of_output_neuron: int, num_of_nodes_prev_layer: int, activation: str = "softmax"):
         self.num_of_output_neuron = num_of_output_neuron
@@ -63,18 +69,19 @@ class OutputLayer:
         self.bias = np.random.normal(0, 1, size=(self.num_of_output_neuron,1))
 
     def forward(self, input: np.array):
-        self.a = np.matmul(self.weight, input) + self.bias ## Need to check the input shape?
+        self.a = np.matmul(self.weight, input.T) + self.bias
         if self.activation == "softmax":
-            self.h = softmax(self.a)
+            self.h = softmax(self.a).T
 
     def backpropagation(self, y_label: np.array, prev_layer_h: np.array):
         #self.L_theta_by_y_hat = np.dot(-1/self.h, y_label)
         self.L_theta_by_a = -1 * (y_label - self.h)
-        self.L_theta_by_w = np.matmul(self.L_theta_by_a, prev_layer_h.T)
-        self.L_theta_by_b = self.L_theta_by_a 
+        self.L_theta_by_w = np.matmul(self.L_theta_by_a.T, prev_layer_h)
+        self.L_theta_by_b = self.L_theta_by_a.sum(axis = 0)
+        #print("Hi")
 
 class NeuralNetwork:
-    def __init__(self, input_neuron: int= 784, num_hidden_layers: int = 3, neurons_per_hidden_layer: list = [100,100,100], num_of_output_neuron: int = 10, learning_rate = 0.0001):
+    def __init__(self, input_neuron: int= 784, num_hidden_layers: int = 3, neurons_per_hidden_layer: list = [100,100,100], num_of_output_neuron: int = 10, learning_rate = 0.001):
         self.input_neuron = input_neuron
         self.num_hidden_layers = num_hidden_layers
         assert self.num_hidden_layers == len(neurons_per_hidden_layer)
@@ -123,10 +130,10 @@ class NeuralNetwork:
                 
     def update(self):
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):   
-            layer["layer"].weight -= layer["layer"].L_theta_by_w * self.learning_rate
-            layer["layer"].bias -= layer["layer"].L_theta_by_b * self.learning_rate
+            layer["layer"].weight -= np.clip(layer["layer"].L_theta_by_w * self.learning_rate, a_min = -1, a_max = 1)
+            layer["layer"].bias -= np.clip(np.expand_dims(layer["layer"].L_theta_by_b,axis=-1) * self.learning_rate, a_min = -1, a_max = 1)
             ## do the update
-
+"""
 my_net = NeuralNetwork()
 
 for i in range(4):
@@ -138,3 +145,19 @@ for i in range(4):
     my_net.backpropagation(x_train = np.expand_dims(x_train[0], axis = -1),
                         y_label = np.expand_dims(y_train[0], axis = -1))
     my_net.update()
+"""
+my_net = NeuralNetwork()
+BATCH_SIZE = 4
+for epoch in range(3):
+    loss_list = []
+    for i in tqdm.tqdm(range(x_train.shape[0]//4)):
+        op = my_net.forward_pass(x_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE])
+        # Calcualte the loss 
+        #print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
+        loss_list.append(cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
+        my_net.backpropagation(x_train = x_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE],
+                            y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE])
+        
+        my_net.update()
+
+    print(f"Loss at epoch {epoch}",np.array(loss_list).mean())
