@@ -81,7 +81,7 @@ class OutputLayer:
         #print("Hi")
 
 class NeuralNetwork:
-    def __init__(self, input_neuron: int= 784, num_hidden_layers: int = 3, neurons_per_hidden_layer: list = [100,100,100], num_of_output_neuron: int = 10, learning_rate = 0.001):
+    def __init__(self, input_neuron: int= 784, num_hidden_layers: int = 3, neurons_per_hidden_layer: list = [100,100,100], num_of_output_neuron: int = 10, learning_rate = 0.0001):
         self.input_neuron = input_neuron
         self.num_hidden_layers = num_hidden_layers
         assert self.num_hidden_layers == len(neurons_per_hidden_layer)
@@ -148,7 +148,7 @@ for i in range(4):
 """
 my_net = NeuralNetwork()
 BATCH_SIZE = 4
-for epoch in range(3):
+for epoch in range(10):
     loss_list = []
     for i in tqdm.tqdm(range(x_train.shape[0]//4)):
         op = my_net.forward_pass(x_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE])
