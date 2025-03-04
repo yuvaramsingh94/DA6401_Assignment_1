@@ -44,22 +44,22 @@ class HiddenLayer:
         self.bias = np.random.normal(0, 1, size=(self.num_of_nodes,1))
 
     def forward(self, input):
-        temp = np.matmul(self.weight, input.T) 
-        self.a = temp + self.bias## Need to check the input shape?
+        temp = np.matmul(self.weight, input.T).T 
+        self.a = temp + self.bias.T## Need to check the input shape?
         if self.activation == "sigmoid":
-            self.h = sigmoid(self.a).T
+            self.h = sigmoid(self.a)
 
     def backpropagation(self, next_layer_w: np.array, next_layer_L_theta_by_a: np.array, prev_layer_h: np.array):
-        self.L_theta_by_h = np.matmul(next_layer_w.T, next_layer_L_theta_by_a.T)
+        self.L_theta_by_h = np.matmul(next_layer_w.T, next_layer_L_theta_by_a.T).T #(4,100)
         ## get the g hat function for the sigmoid function
         if self.activation == "sigmoid":
             ## Here is some problem with getting the g_hat
             self.g_hat = np.multiply(self.h, (1- self.h))
         ## calculate the L_theta_by_a
         
-        self.L_theta_by_a = np.multiply(self.L_theta_by_h.T, self.g_hat)
+        self.L_theta_by_a = np.multiply(self.L_theta_by_h, self.g_hat)
         self.L_theta_by_w = np.matmul(self.L_theta_by_a.T, prev_layer_h)
-        self.L_theta_by_b = self.L_theta_by_a.sum(axis=0) 
+        self.L_theta_by_b = np.expand_dims(self.L_theta_by_a.sum(axis = 0),axis = -1)
 class OutputLayer:
     def __init__(self, num_of_output_neuron: int, num_of_nodes_prev_layer: int, activation: str = "softmax"):
         self.num_of_output_neuron = num_of_output_neuron
@@ -69,15 +69,16 @@ class OutputLayer:
         self.bias = np.random.normal(0, 1, size=(self.num_of_output_neuron,1))
 
     def forward(self, input: np.array):
-        self.a = np.matmul(self.weight, input.T) + self.bias
+        temp = np.matmul(self.weight, input.T).T 
+        self.a = temp + self.bias.T## Need to check the input shape?
         if self.activation == "softmax":
-            self.h = softmax(self.a).T
+            self.h = softmax(self.a)
 
     def backpropagation(self, y_label: np.array, prev_layer_h: np.array):
         #self.L_theta_by_y_hat = np.dot(-1/self.h, y_label)
         self.L_theta_by_a = -1 * (y_label - self.h)
         self.L_theta_by_w = np.matmul(self.L_theta_by_a.T, prev_layer_h)
-        self.L_theta_by_b = self.L_theta_by_a.sum(axis = 0)
+        self.L_theta_by_b = np.expand_dims(self.L_theta_by_a.sum(axis = 0),axis = -1)
         #print("Hi")
 
 class NeuralNetwork:
@@ -131,7 +132,7 @@ class NeuralNetwork:
     def update(self):
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):   
             layer["layer"].weight -= np.clip(layer["layer"].L_theta_by_w * self.learning_rate, a_min = -1, a_max = 1)
-            layer["layer"].bias -= np.clip(np.expand_dims(layer["layer"].L_theta_by_b,axis=-1) * self.learning_rate, a_min = -1, a_max = 1)
+            layer["layer"].bias -= np.clip(layer["layer"].L_theta_by_b * self.learning_rate, a_min = -1, a_max = 1)
             ## do the update
 """
 my_net = NeuralNetwork()
@@ -149,15 +150,28 @@ for i in range(4):
 my_net = NeuralNetwork()
 BATCH_SIZE = 4
 for epoch in range(10):
-    loss_list = []
+    training_loss_list = []
+    validation_loss_list = []
     for i in tqdm.tqdm(range(x_train.shape[0]//4)):
-        op = my_net.forward_pass(x_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE])
+        train_x = x_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]
+        train_y = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]
+        op = my_net.forward_pass(train_x)
         # Calcualte the loss 
         #print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-        loss_list.append(cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-        my_net.backpropagation(x_train = x_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE],
-                            y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE])
+        training_loss_list.append(cross_entropy(y_pred = op, y_label = train_y))
+        my_net.backpropagation(x_train = train_x,
+                            y_label = train_y)
         
         my_net.update()
 
-    print(f"Loss at epoch {epoch}",np.array(loss_list).mean())
+    for i in tqdm.tqdm(range(x_test.shape[0]//4)):
+        test_x = x_test[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]
+        test_y = y_test[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]
+        op = my_net.forward_pass(test_x)
+        # Calcualte the loss 
+        #print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
+        validation_loss_list.append(cross_entropy(y_pred = op, y_label = test_y))
+    ## 
+
+    print(f"Training loss at epoch {epoch}",np.array(training_loss_list).mean())
+    print(f"Validation loss at epoch {epoch}",np.array(validation_loss_list).mean())
