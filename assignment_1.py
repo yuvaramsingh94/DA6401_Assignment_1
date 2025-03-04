@@ -13,14 +13,28 @@ wandb.login(key=WANDB_API)
 config = {
     "epochs": 10,
     "num_hidden_layers": 3,
-    "neurons_per_hidden_layer": [100, 100, 100],
+    "neurons_per_hidden_layer": [32, 32, 32],
     "num_of_output_neuron": 10,
-    "learning_rate": 0.0001,
+    "learning_rate": 0.000001,
+    "batch_size": 4,
+    "hidden_activation": "relu",
 }
 
+wandb.init(
+    # Set the project where this run will be logged
+    project="Fashion_MNIST",
+    # We pass a run name (otherwise it’ll be randomly assigned, like sunshine-lollypop-10)
+    name=f"experiment_v1",
+    # Track hyperparameters and run metadata
+    config=config,
+)
 
+## TODO:  split training data for validation 10%
 (x_train, y_train_int), (x_test, y_test_int) = fashion_mnist.load_data()
-
+## Normalize the x
+x_train = (x_train - x_train.mean()) / x_train.std()
+x_test = (x_test - x_test.mean()) / x_test.std()
+# print("Train", x_train.min(), x_train.max())
 ## One hot encode the Y
 y_train = np.zeros((y_train_int.size, y_train_int.max() + 1))
 y_train[np.arange(y_train_int.size), y_train_int] = 1
@@ -47,11 +61,20 @@ def softmax(x: np.array) -> np.array:
     return e_x / e_x.sum()
 
 
+def tanh(x: np.array) -> np.array:
+    x = np.clip(x, None, 709)  # Clip values at 709 to avoid overflow
+    return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
+
+
+def relu(x: np.array) -> np.array:
+    return np.maximum(0, x)
+
+
 def cross_entropy(y_pred: np.array, y_label: np.array) -> np.array:
     epsilon = 1e-10
     dot_ = y_label * np.log(y_pred + epsilon)
     # dot_ = np.dot(y_label,np.log(y_pred))
-    return -dot_.sum()
+    return -dot_  # .sum()
 
 
 class HiddenLayer:
@@ -74,6 +97,10 @@ class HiddenLayer:
         self.a = temp + self.bias.T  ## Need to check the input shape?
         if self.activation == "sigmoid":
             self.h = sigmoid(self.a)
+        if self.activation == "tanh":
+            self.h = tanh(self.a)
+        if self.activation == "relu":
+            self.h = relu(self.a)
 
     def backpropagation(
         self,
@@ -88,6 +115,11 @@ class HiddenLayer:
         if self.activation == "sigmoid":
             ## Here is some problem with getting the g_hat
             self.g_hat = np.multiply(self.h, (1 - self.h))
+        elif self.activation == "tanh":
+            self.g_hat = 1 - np.multiply(self.h, self.h)
+        elif self.activation == "relu":
+            self.g_hat = np.where(self.h > 0, 1, 0)
+
         ## calculate the L_theta_by_a
 
         self.L_theta_by_a = np.multiply(self.L_theta_by_h, self.g_hat)
@@ -129,9 +161,10 @@ class NeuralNetwork:
         self,
         input_neuron: int = 784,
         num_hidden_layers: int = 3,
-        neurons_per_hidden_layer: list = [100, 100, 100],
+        neurons_per_hidden_layer: list = [32, 32, 32],
         num_of_output_neuron: int = 10,
-        learning_rate=0.0001,
+        learning_rate: float = 0.0001,
+        hidden_activation: str = "sigmoid",
     ):
         self.input_neuron = input_neuron
         self.num_hidden_layers = num_hidden_layers
@@ -139,6 +172,7 @@ class NeuralNetwork:
         self.neurons_per_hidden_layer = neurons_per_hidden_layer
         self.num_of_output_neuron = num_of_output_neuron
         self.learning_rate = learning_rate
+        self.hidden_activation = hidden_activation
         ## Build the NN
         self.build_nn()
 
@@ -151,7 +185,7 @@ class NeuralNetwork:
                     "layer": HiddenLayer(
                         num_of_nodes=neurons_i,
                         num_of_nodes_prev_layer=self.input_neuron,
-                        activation="sigmoid",
+                        activation=self.hidden_activation,
                     )
                 }
             else:
@@ -161,7 +195,7 @@ class NeuralNetwork:
                         num_of_nodes_prev_layer=self.neurons_per_hidden_layer[
                             layer_i - 1
                         ],
-                        activation="sigmoid",
+                        activation=self.hidden_activation,
                     )
                 }
         ## Add the output layer
@@ -213,10 +247,10 @@ class NeuralNetwork:
     def update(self):
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
             layer["layer"].weight -= np.clip(
-                layer["layer"].L_theta_by_w * self.learning_rate, a_min=-5, a_max=5
+                layer["layer"].L_theta_by_w * self.learning_rate, a_min=-1e5, a_max=1e5
             )
             layer["layer"].bias -= np.clip(
-                layer["layer"].L_theta_by_b * self.learning_rate, a_min=-5, a_max=5
+                layer["layer"].L_theta_by_b * self.learning_rate, a_min=-1e5, a_max=1e5
             )
             ## do the update
 
@@ -234,9 +268,15 @@ for i in range(4):
                         y_label = np.expand_dims(y_train[0], axis = -1))
     my_net.update()
 """
-my_net = NeuralNetwork()
-BATCH_SIZE = 4
-for epoch in range(10):
+my_net = NeuralNetwork(
+    num_hidden_layers=config["num_hidden_layers"],
+    neurons_per_hidden_layer=config["neurons_per_hidden_layer"],
+    num_of_output_neuron=config["num_of_output_neuron"],
+    learning_rate=config["learning_rate"],
+    hidden_activation=config["hidden_activation"],
+)
+BATCH_SIZE = config["batch_size"]
+for epoch in range(config["epochs"]):
     training_loss_list = []
     validation_loss_list = []
     for i in tqdm.tqdm(range(x_train.shape[0] // 4)):
@@ -259,5 +299,18 @@ for epoch in range(10):
         validation_loss_list.append(cross_entropy(y_pred=op, y_label=test_y))
     ##
 
-    print(f"Training loss at epoch {epoch}", np.array(training_loss_list).mean())
-    print(f"Validation loss at epoch {epoch}", np.array(validation_loss_list).mean())
+    # print(
+    #     f"Training loss at epoch {epoch}",
+    #     np.array(training_loss_list).reshape(-1).mean(),
+    # )
+    # print(
+    #     f"Validation loss at epoch {epoch}",
+    #     np.array(validation_loss_list).reshape(-1).mean(),
+    # )
+
+    wandb.log(
+        {
+            "Training loss": np.array(training_loss_list).reshape(-1).mean(),
+            "Validation loss": np.array(validation_loss_list).reshape(-1).mean(),
+        }
+    )
