@@ -4,6 +4,7 @@ from API_key import WANDB_API
 import numpy as np
 from keras.datasets import fashion_mnist
 import tqdm
+import copy
 
 wandb.require("core")
 wandb.login(key=WANDB_API)
@@ -18,8 +19,8 @@ config = {
     "learning_rate": 0.00001,
     "batch_size": 4,
     "hidden_activation": "sigmoid",
-    "optimizer": "momentum",  # momentum
-    "momentum_beta": 0.9,
+    "optimizer": "NAG",  # momentum
+    "momentum_beta": 0.5,
 }
 
 wandb.init(
@@ -281,6 +282,7 @@ class NeuralNetwork:
                 )
 
     def update(self):
+
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
 
             if self.optimizer == "SGD":
@@ -288,6 +290,38 @@ class NeuralNetwork:
 
             elif self.optimizer == "momentum":
                 momentum(layer, self.learning_rate)
+
+    def NAG_look_weight_update(self):
+        for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
+            layer["layer"].weight -= np.clip(
+                config["momentum_beta"] * layer["layer"].u_w, a_min=-1e5, a_max=1e5
+            )
+            layer["layer"].bias -= np.clip(
+                config["momentum_beta"] * layer["layer"].u_b, a_min=-1e5, a_max=1e5
+            )
+
+    def NAG_leep_weight_update(self, temp_net: "NeuralNetwork"):
+        for count, ((layer_name, layer_actual), (_, layer_copy)) in enumerate(
+            zip(list(self.nn_dict.items()), list(temp_net.nn_dict.items()))
+        ):
+            layer_actual["layer"].u_w = (
+                config["momentum_beta"] * layer_actual["layer"].u_w
+                + layer_copy["layer"].L_theta_by_w
+            )
+            layer_actual["layer"].u_b = (
+                config["momentum_beta"] * layer_actual["layer"].u_b
+                + layer_copy["layer"].L_theta_by_b
+            )
+
+            updated_weight = np.clip(
+                layer_actual["layer"].u_w * self.learning_rate, a_min=-0.1, a_max=0.1
+            )
+            updated_bias = np.clip(
+                layer_actual["layer"].u_b * self.learning_rate, a_min=-0.1, a_max=0.1
+            )
+
+            layer_actual["layer"].weight -= updated_weight
+            layer_actual["layer"].bias -= updated_bias
 
 
 my_net = NeuralNetwork(
@@ -310,8 +344,17 @@ for epoch in range(config["epochs"]):
         # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
         training_loss_list.append(cross_entropy(y_pred=op, y_label=train_y))
         my_net.backpropagation(x_train=train_x, y_label=train_y)
+        if my_net.optimizer != "NAG":
+            my_net.update()
+        elif my_net.optimizer == "NAG":
+            temp_net = copy.deepcopy(my_net)
+            temp_net.NAG_look_weight_update()
+            _ = temp_net.forward_pass(train_x)
+            temp_net.backpropagation(x_train=train_x, y_label=train_y)
+            my_net.NAG_leep_weight_update(temp_net)
 
-        my_net.update()
+            del temp_net
+            ## Do a Forward pass and backpropagation to get the gradients
 
     for i in tqdm.tqdm(range(x_test.shape[0] // 4)):
         test_x = x_test[i * BATCH_SIZE : i * BATCH_SIZE + BATCH_SIZE]
