@@ -15,9 +15,11 @@ config = {
     "num_hidden_layers": 3,
     "neurons_per_hidden_layer": [32, 32, 32],
     "num_of_output_neuron": 10,
-    "learning_rate": 0.000001,
+    "learning_rate": 0.00001,
     "batch_size": 4,
-    "hidden_activation": "relu",
+    "hidden_activation": "sigmoid",
+    "optimizer": "momentum",  # momentum
+    "momentum_beta": 0.9,
 }
 
 wandb.init(
@@ -91,6 +93,9 @@ class HiddenLayer:
             0, 1, size=(self.num_of_nodes, self.num_of_nodes_prev_layer)
         )
         self.bias = np.random.normal(0, 1, size=(self.num_of_nodes, 1))
+        ## Set this as zero for now
+        self.u_w = np.zeros_like(self.weight)
+        self.u_b = np.zeros_like(self.bias)
 
     def forward(self, input):
         temp = np.matmul(self.weight, input.T).T
@@ -142,6 +147,10 @@ class OutputLayer:
         )
         self.bias = np.random.normal(0, 1, size=(self.num_of_output_neuron, 1))
 
+        ## Set this as zero for now
+        self.u_w = np.zeros_like(self.weight)
+        self.u_b = np.zeros_like(self.bias)
+
     def forward(self, input: np.array):
         temp = np.matmul(self.weight, input.T).T
         self.a = temp + self.bias.T  ## Need to check the input shape?
@@ -156,6 +165,31 @@ class OutputLayer:
         # print("Hi")
 
 
+def SGD(layer: dict, learning_rate: float):
+    layer["layer"].weight -= np.clip(
+        layer["layer"].L_theta_by_w * learning_rate, a_min=-1e5, a_max=1e5
+    )
+    layer["layer"].bias -= np.clip(
+        layer["layer"].L_theta_by_b * learning_rate, a_min=-1e5, a_max=1e5
+    )
+
+
+def momentum(layer: dict, learning_rate: float):
+
+    layer["layer"].u_w = (
+        config["momentum_beta"] * layer["layer"].u_w + layer["layer"].L_theta_by_w
+    )
+    layer["layer"].u_b = (
+        config["momentum_beta"] * layer["layer"].u_b + layer["layer"].L_theta_by_b
+    )
+
+    updated_weight = np.clip(layer["layer"].u_w * learning_rate, a_min=-0.1, a_max=0.1)
+    updated_bias = np.clip(layer["layer"].u_b * learning_rate, a_min=-0.1, a_max=0.1)
+
+    layer["layer"].weight -= updated_weight
+    layer["layer"].bias -= updated_bias
+
+
 class NeuralNetwork:
     def __init__(
         self,
@@ -165,6 +199,7 @@ class NeuralNetwork:
         num_of_output_neuron: int = 10,
         learning_rate: float = 0.0001,
         hidden_activation: str = "sigmoid",
+        optimizer: str = "SGD",
     ):
         self.input_neuron = input_neuron
         self.num_hidden_layers = num_hidden_layers
@@ -173,6 +208,7 @@ class NeuralNetwork:
         self.num_of_output_neuron = num_of_output_neuron
         self.learning_rate = learning_rate
         self.hidden_activation = hidden_activation
+        self.optimizer = optimizer
         ## Build the NN
         self.build_nn()
 
@@ -246,34 +282,21 @@ class NeuralNetwork:
 
     def update(self):
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
-            layer["layer"].weight -= np.clip(
-                layer["layer"].L_theta_by_w * self.learning_rate, a_min=-1e5, a_max=1e5
-            )
-            layer["layer"].bias -= np.clip(
-                layer["layer"].L_theta_by_b * self.learning_rate, a_min=-1e5, a_max=1e5
-            )
-            ## do the update
+
+            if self.optimizer == "SGD":
+                SGD(layer, self.learning_rate)
+
+            elif self.optimizer == "momentum":
+                momentum(layer, self.learning_rate)
 
 
-"""
-my_net = NeuralNetwork()
-
-for i in range(4):
-    op = my_net.forward_pass(np.expand_dims(x_train[0], axis = -1))
-    # Calcualte the loss 
-    print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[0]))
-
-
-    my_net.backpropagation(x_train = np.expand_dims(x_train[0], axis = -1),
-                        y_label = np.expand_dims(y_train[0], axis = -1))
-    my_net.update()
-"""
 my_net = NeuralNetwork(
     num_hidden_layers=config["num_hidden_layers"],
     neurons_per_hidden_layer=config["neurons_per_hidden_layer"],
     num_of_output_neuron=config["num_of_output_neuron"],
     learning_rate=config["learning_rate"],
     hidden_activation=config["hidden_activation"],
+    optimizer=config["optimizer"],
 )
 BATCH_SIZE = config["batch_size"]
 for epoch in range(config["epochs"]):
