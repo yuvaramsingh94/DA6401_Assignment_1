@@ -19,10 +19,12 @@ config = {
     "learning_rate": 0.00001,
     "batch_size": 4,
     "hidden_activation": "sigmoid",
-    "optimizer": "RMSprop",  # momentum
+    "optimizer": "Adam",  # momentum
     "momentum_beta": 0.5,
-    "RMS_epsilon":1e-5,
-    "RMSprop_beta":0.5,
+    "RMS_epsilon": 1e-5,
+    "RMSprop_beta": 0.5,
+    "adam_beta_1": 0.9,
+    "adam_beta_2": 0.999,
 }
 
 wandb.init(
@@ -104,6 +106,10 @@ class HiddenLayer:
         self.v_w = np.zeros_like(self.weight)
         self.v_b = np.zeros_like(self.bias)
 
+        ## Set this as zero for now
+        self.m_w = np.zeros_like(self.weight)
+        self.m_b = np.zeros_like(self.bias)
+
     def forward(self, input):
         temp = np.matmul(self.weight, input.T).T
         self.a = temp + self.bias.T  ## Need to check the input shape?
@@ -162,6 +168,10 @@ class OutputLayer:
         self.v_w = np.zeros_like(self.weight)
         self.v_b = np.zeros_like(self.bias)
 
+        ## Set this as zero for now
+        self.m_w = np.zeros_like(self.weight)
+        self.m_b = np.zeros_like(self.bias)
+
     def forward(self, input: np.array):
         temp = np.matmul(self.weight, input.T).T
         self.a = temp + self.bias.T  ## Need to check the input shape?
@@ -200,19 +210,82 @@ def momentum(layer: dict, learning_rate: float):
     layer["layer"].weight -= updated_weight
     layer["layer"].bias -= updated_bias
 
-def RMSprop(layer: dict, learning_rate: float):
-    layer["layer"].v_w = (
-        config["RMSprop_beta"] * layer["layer"].v_w + (1- config["RMSprop_beta"])*np.multiply(layer["layer"].L_theta_by_w,layer["layer"].L_theta_by_w)
-    )
-    layer["layer"].v_b = (
-        config["RMSprop_beta"] * layer["layer"].v_b + (1- config["RMSprop_beta"])*np.multiply(layer["layer"].L_theta_by_b,layer["layer"].L_theta_by_b)
-    )
 
-    updated_weight = np.clip(np.multiply(layer["layer"].L_theta_by_w , (learning_rate/np.sqrt(layer["layer"].v_w + config["RMS_epsilon"]))), a_min=-0.1, a_max=0.1)
-    updated_bias = np.clip(np.multiply(layer["layer"].L_theta_by_b , (learning_rate/np.sqrt(layer["layer"].v_b + config["RMS_epsilon"]))), a_min=-0.1, a_max=0.1)
+def RMSprop(layer: dict, learning_rate: float):
+    layer["layer"].v_w = config["RMSprop_beta"] * layer["layer"].v_w + (
+        1 - config["RMSprop_beta"]
+    ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
+    layer["layer"].v_b = config["RMSprop_beta"] * layer["layer"].v_b + (
+        1 - config["RMSprop_beta"]
+    ) * np.multiply(layer["layer"].L_theta_by_b, layer["layer"].L_theta_by_b)
+
+    updated_weight = np.clip(
+        np.multiply(
+            layer["layer"].L_theta_by_w,
+            (learning_rate / np.sqrt(layer["layer"].v_w + config["RMS_epsilon"])),
+        ),
+        a_min=-0.1,
+        a_max=0.1,
+    )
+    updated_bias = np.clip(
+        np.multiply(
+            layer["layer"].L_theta_by_b,
+            (learning_rate / np.sqrt(layer["layer"].v_b + config["RMS_epsilon"])),
+        ),
+        a_min=-0.1,
+        a_max=0.1,
+    )
 
     layer["layer"].weight -= updated_weight
     layer["layer"].bias -= updated_bias
+
+
+def Adam(layer: dict, learning_rate: float, epoch: int):
+
+    ## Setup the Momuntum side of the optimization
+    layer["layer"].m_w = (
+        config["adam_beta_1"] * layer["layer"].m_w
+        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_w
+    )
+    ## Not adding m_hat to the layer as i dont see the need to track it as of now
+    m_hat_w = layer["layer"].m_w / (1 - config["adam_beta_1"] ** epoch)
+    layer["layer"].m_b = (
+        config["adam_beta_1"] * layer["layer"].m_b
+        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_b
+    )
+    m_hat_b = layer["layer"].m_b / (1 - config["adam_beta_1"] ** epoch)
+
+    ## Setup the V side of the optimization
+    layer["layer"].v_w = config["adam_beta_2"] * layer["layer"].v_w + (
+        1 - config["adam_beta_2"]
+    ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
+
+    v_hat_w = layer["layer"].v_w / (1 - config["adam_beta_2"] ** epoch)
+
+    layer["layer"].v_b = config["adam_beta_2"] * layer["layer"].v_b + (
+        1 - config["adam_beta_2"]
+    ) * np.multiply(layer["layer"].L_theta_by_b, layer["layer"].L_theta_by_b)
+
+    v_hat_b = layer["layer"].v_b / (1 - config["adam_beta_2"] ** epoch)
+
+    updated_weight = np.clip(
+        np.multiply(
+            m_hat_w, (learning_rate / (np.sqrt(v_hat_w) + config["RMS_epsilon"]))
+        ),
+        a_min=-0.1,
+        a_max=0.1,
+    )
+    updated_bias = np.clip(
+        np.multiply(
+            m_hat_b, (learning_rate / (np.sqrt(v_hat_b) + config["RMS_epsilon"]))
+        ),
+        a_min=-0.1,
+        a_max=0.1,
+    )
+
+    layer["layer"].weight -= updated_weight
+    layer["layer"].bias -= updated_bias
+
 
 class NeuralNetwork:
     def __init__(
@@ -304,7 +377,7 @@ class NeuralNetwork:
                     prev_layer_h=reverse_layers[count + 1][-1]["layer"].h,
                 )
 
-    def update(self):
+    def update(self, epoch: int):
 
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
 
@@ -315,6 +388,9 @@ class NeuralNetwork:
                 momentum(layer, self.learning_rate)
             elif self.optimizer == "RMSprop":
                 RMSprop(layer, self.learning_rate)
+
+            elif self.optimizer == "Adam":
+                Adam(layer, self.learning_rate, epoch)
 
     def NAG_look_weight_update(self):
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
@@ -358,7 +434,7 @@ my_net = NeuralNetwork(
     optimizer=config["optimizer"],
 )
 BATCH_SIZE = config["batch_size"]
-for epoch in range(config["epochs"]):
+for epoch in range(1, config["epochs"] + 1):
     training_loss_list = []
     validation_loss_list = []
     for i in tqdm.tqdm(range(x_train.shape[0] // 4)):
@@ -370,7 +446,7 @@ for epoch in range(config["epochs"]):
         training_loss_list.append(cross_entropy(y_pred=op, y_label=train_y))
         my_net.backpropagation(x_train=train_x, y_label=train_y)
         if my_net.optimizer != "NAG":
-            my_net.update()
+            my_net.update(epoch=epoch)
         elif my_net.optimizer == "NAG":
             temp_net = copy.deepcopy(my_net)
             temp_net.NAG_look_weight_update()
