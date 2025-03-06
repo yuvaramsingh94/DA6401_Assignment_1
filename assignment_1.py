@@ -19,8 +19,10 @@ config = {
     "learning_rate": 0.00001,
     "batch_size": 4,
     "hidden_activation": "sigmoid",
-    "optimizer": "NAG",  # momentum
+    "optimizer": "RMSprop",  # momentum
     "momentum_beta": 0.5,
+    "RMS_epsilon":1e-5,
+    "RMSprop_beta":0.5,
 }
 
 wandb.init(
@@ -98,6 +100,10 @@ class HiddenLayer:
         self.u_w = np.zeros_like(self.weight)
         self.u_b = np.zeros_like(self.bias)
 
+        ## Set this as zero for now
+        self.v_w = np.zeros_like(self.weight)
+        self.v_b = np.zeros_like(self.bias)
+
     def forward(self, input):
         temp = np.matmul(self.weight, input.T).T
         self.a = temp + self.bias.T  ## Need to check the input shape?
@@ -152,6 +158,10 @@ class OutputLayer:
         self.u_w = np.zeros_like(self.weight)
         self.u_b = np.zeros_like(self.bias)
 
+        ## Set this as zero for now
+        self.v_w = np.zeros_like(self.weight)
+        self.v_b = np.zeros_like(self.bias)
+
     def forward(self, input: np.array):
         temp = np.matmul(self.weight, input.T).T
         self.a = temp + self.bias.T  ## Need to check the input shape?
@@ -190,6 +200,19 @@ def momentum(layer: dict, learning_rate: float):
     layer["layer"].weight -= updated_weight
     layer["layer"].bias -= updated_bias
 
+def RMSprop(layer: dict, learning_rate: float):
+    layer["layer"].v_w = (
+        config["RMSprop_beta"] * layer["layer"].v_w + (1- config["RMSprop_beta"])*np.multiply(layer["layer"].L_theta_by_w,layer["layer"].L_theta_by_w)
+    )
+    layer["layer"].v_b = (
+        config["RMSprop_beta"] * layer["layer"].v_b + (1- config["RMSprop_beta"])*np.multiply(layer["layer"].L_theta_by_b,layer["layer"].L_theta_by_b)
+    )
+
+    updated_weight = np.clip(np.multiply(layer["layer"].L_theta_by_w , (learning_rate/np.sqrt(layer["layer"].v_w + config["RMS_epsilon"]))), a_min=-0.1, a_max=0.1)
+    updated_bias = np.clip(np.multiply(layer["layer"].L_theta_by_b , (learning_rate/np.sqrt(layer["layer"].v_b + config["RMS_epsilon"]))), a_min=-0.1, a_max=0.1)
+
+    layer["layer"].weight -= updated_weight
+    layer["layer"].bias -= updated_bias
 
 class NeuralNetwork:
     def __init__(
@@ -290,6 +313,8 @@ class NeuralNetwork:
 
             elif self.optimizer == "momentum":
                 momentum(layer, self.learning_rate)
+            elif self.optimizer == "RMSprop":
+                RMSprop(layer, self.learning_rate)
 
     def NAG_look_weight_update(self):
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
