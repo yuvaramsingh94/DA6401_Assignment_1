@@ -19,7 +19,7 @@ config = {
     "learning_rate": 0.00001,
     "batch_size": 4,
     "hidden_activation": "sigmoid",
-    "optimizer": "Adam",  # momentum
+    "optimizer": "Nadam",  # momentum
     "momentum_beta": 0.5,
     "RMS_epsilon": 1e-5,
     "RMSprop_beta": 0.5,
@@ -287,6 +287,69 @@ def Adam(layer: dict, learning_rate: float, epoch: int):
     layer["layer"].bias -= updated_bias
 
 
+def Nadam(layer: dict, learning_rate: float, epoch: int):
+
+    ## Setup the Momuntum side of the optimization
+    layer["layer"].m_w = (
+        config["adam_beta_1"] * layer["layer"].m_w
+        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_w
+    )
+    ## Not adding m_hat to the layer as i dont see the need to track it as of now
+    m_hat_w = layer["layer"].m_w / (1 - config["adam_beta_1"] ** (epoch + 1))
+    layer["layer"].m_b = (
+        config["adam_beta_1"] * layer["layer"].m_b
+        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_b
+    )
+    m_hat_b = layer["layer"].m_b / (1 - config["adam_beta_1"] ** (epoch + 1))
+
+    ## Setup the V side of the optimization
+    layer["layer"].v_w = config["adam_beta_2"] * layer["layer"].v_w + (
+        1 - config["adam_beta_2"]
+    ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
+
+    v_hat_w = layer["layer"].v_w / (1 - config["adam_beta_2"] ** (epoch + 1))
+
+    layer["layer"].v_b = config["adam_beta_2"] * layer["layer"].v_b + (
+        1 - config["adam_beta_2"]
+    ) * np.multiply(layer["layer"].L_theta_by_b, layer["layer"].L_theta_by_b)
+
+    v_hat_b = layer["layer"].v_b / (1 - config["adam_beta_2"] ** (epoch + 1))
+
+    updated_weight = np.clip(
+        np.multiply(
+            (
+                config["adam_beta_1"] * m_hat_w
+                + (
+                    (1 - config["adam_beta_1"])
+                    / (1 - config["adam_beta_1"] ** (epoch + 1))
+                )
+                * layer["layer"].L_theta_by_w
+            ),
+            (learning_rate / (np.sqrt(v_hat_w) + config["RMS_epsilon"])),
+        ),
+        a_min=-0.1,
+        a_max=0.1,
+    )
+    updated_bias = np.clip(
+        np.multiply(
+            (
+                config["adam_beta_1"] * m_hat_b
+                + (
+                    (1 - config["adam_beta_1"])
+                    / (1 - config["adam_beta_1"] ** (epoch + 1))
+                )
+                * layer["layer"].L_theta_by_b
+            ),
+            (learning_rate / (np.sqrt(v_hat_b) + config["RMS_epsilon"])),
+        ),
+        a_min=-0.1,
+        a_max=0.1,
+    )
+
+    layer["layer"].weight -= updated_weight
+    layer["layer"].bias -= updated_bias
+
+
 class NeuralNetwork:
     def __init__(
         self,
@@ -391,6 +454,8 @@ class NeuralNetwork:
 
             elif self.optimizer == "Adam":
                 Adam(layer, self.learning_rate, epoch)
+            elif self.optimizer == "Nadam":
+                Nadam(layer, self.learning_rate, epoch)
 
     def NAG_look_weight_update(self):
         for count, (layer_name, layer) in enumerate(list(self.nn_dict.items())):
