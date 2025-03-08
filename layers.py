@@ -1,6 +1,7 @@
 import numpy as np
 from activation import sigmoid, relu, tanh, softmax
-from configuration import config
+
+# from configuration import config
 
 
 class HiddenLayer:
@@ -9,16 +10,18 @@ class HiddenLayer:
         num_of_nodes: int,
         num_of_nodes_prev_layer: int,
         activation: str = "sigmoid",
+        config: dict = {},
     ):
         self.num_of_nodes = num_of_nodes
         self.num_of_nodes_prev_layer = num_of_nodes_prev_layer
         self.activation = activation
-        if config["weight_initialisation"] == "random":
+        self.config = config
+        if self.config["weight_initialisation"] == "random":
             self.weight = np.random.normal(
                 0, 1, size=(self.num_of_nodes, self.num_of_nodes_prev_layer)
             )
             self.bias = np.random.normal(0, 1, size=(self.num_of_nodes, 1))
-        elif config["weight_initialisation"] == "xavier":
+        elif self.config["weight_initialisation"] == "xavier":
             xavier = np.sqrt(6 / (self.num_of_nodes + self.num_of_nodes_prev_layer))
             self.weight = np.random.uniform(
                 -xavier,
@@ -78,11 +81,11 @@ class HiddenLayer:
         self.L_theta_by_a = np.multiply(self.L_theta_by_h, self.g_hat)
         self.L_theta_by_w = (
             np.matmul(self.L_theta_by_a.T, prev_layer_h)
-            + config["L2_regularisation"] * self.weight
+            + self.config["L2_regularisation"] * self.weight
         )
         self.L_theta_by_b = (
             np.expand_dims(self.L_theta_by_a.sum(axis=0), axis=-1)
-            + config["L2_regularisation"] * self.bias
+            + self.config["L2_regularisation"] * self.bias
         )
 
 
@@ -92,16 +95,18 @@ class OutputLayer:
         num_of_output_neuron: int,
         num_of_nodes_prev_layer: int,
         activation: str = "softmax",
+        config: dict = {},
     ):
         self.num_of_output_neuron = num_of_output_neuron
         self.num_of_nodes_prev_layer = num_of_nodes_prev_layer
         self.activation = activation
-        if config["weight_initialisation"] == "random":
+        self.config = config
+        if self.config["weight_initialisation"] == "random":
             self.weight = np.random.normal(
                 0, 1, size=(self.num_of_output_neuron, self.num_of_nodes_prev_layer)
             )
             self.bias = np.random.normal(0, 1, size=(self.num_of_output_neuron, 1))
-        elif config["weight_initialisation"] == "xavier":
+        elif self.config["weight_initialisation"] == "xavier":
             self.weight = np.random.uniform(
                 -(
                     np.sqrt(
@@ -188,16 +193,16 @@ class OutputLayer:
 
     def backpropagation(self, y_label: np.array, prev_layer_h: np.array):
         # self.L_theta_by_y_hat = np.dot(-1/self.h, y_label)
-        if config["loss_fn"] == "cross entropy":
+        if self.config["loss_fn"] == "cross entropy":
             self.L_theta_by_a = -1 * (y_label - self.h)
-        elif config["loss_fn"] == "mse":
+        elif self.config["loss_fn"] == "mse":
             self.L_theta_by_a = self.mse_softmax_gradient(y_label)
         self.L_theta_by_w = (
             np.matmul(self.L_theta_by_a.T, prev_layer_h)
-            + config["L2_regularisation"] * self.weight
+            + self.config["L2_regularisation"] * self.weight
         )
         self.L_theta_by_b = (
             np.expand_dims(self.L_theta_by_a.sum(axis=0), axis=-1)
-            + config["L2_regularisation"] * self.bias
+            + self.config["L2_regularisation"] * self.bias
         )
         # print("Hi")

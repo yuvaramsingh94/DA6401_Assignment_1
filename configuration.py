@@ -1,6 +1,6 @@
 ## Setup the configuration
 config = {
-    "epochs": 10,
+    "epochs": 3,
     "num_hidden_layers": 3,
     "neurons_per_hidden_layer": [32, 32, 32],
     "num_of_output_neuron": 10,

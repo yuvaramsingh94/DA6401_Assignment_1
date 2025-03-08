@@ -1,8 +1,7 @@
 import numpy as np
-from configuration import config
 
 
-def SGD(layer: dict, learning_rate: float):
+def SGD(layer: dict, learning_rate: float, config: dict):
     layer["layer"].weight -= np.clip(
         layer["layer"].L_theta_by_w * learning_rate, a_min=-1e5, a_max=1e5
     )
@@ -11,7 +10,7 @@ def SGD(layer: dict, learning_rate: float):
     )
 
 
-def momentum(layer: dict, learning_rate: float):
+def momentum(layer: dict, learning_rate: float, config: dict):
 
     layer["layer"].u_w = (
         config["momentum_beta"] * layer["layer"].u_w + layer["layer"].L_theta_by_w
@@ -27,7 +26,7 @@ def momentum(layer: dict, learning_rate: float):
     layer["layer"].bias -= updated_bias
 
 
-def RMSprop(layer: dict, learning_rate: float):
+def RMSprop(layer: dict, learning_rate: float, config: dict):
     layer["layer"].v_w = config["RMSprop_beta"] * layer["layer"].v_w + (
         1 - config["RMSprop_beta"]
     ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
@@ -56,7 +55,7 @@ def RMSprop(layer: dict, learning_rate: float):
     layer["layer"].bias -= updated_bias
 
 
-def Adam(layer: dict, learning_rate: float, epoch: int):
+def Adam(layer: dict, learning_rate: float, epoch: int, config: dict):
 
     ## Setup the Momuntum side of the optimization
     layer["layer"].m_w = (
@@ -103,7 +102,7 @@ def Adam(layer: dict, learning_rate: float, epoch: int):
     layer["layer"].bias -= updated_bias
 
 
-def Nadam(layer: dict, learning_rate: float, epoch: int):
+def Nadam(layer: dict, learning_rate: float, epoch: int, config: dict):
 
     ## Setup the Momuntum side of the optimization
     layer["layer"].m_w = (
