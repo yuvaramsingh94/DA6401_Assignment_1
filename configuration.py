@@ -16,5 +16,5 @@ config = {
     "validation_split": 0.1,
     "weight_initialisation": "random",
     "L2_regularisation": 0.0001,
-    "loss_fn": "cross entropy",
+    "loss_fn": "mse",  # mse
 }

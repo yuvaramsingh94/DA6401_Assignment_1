@@ -150,9 +150,48 @@ class OutputLayer:
         self.weight_l2 = np.multiply(self.weight, self.weight).reshape(-1)
         self.bias_l2 = np.multiply(self.bias, self.bias).reshape(-1)
 
+    def mse_softmax_gradient(self, y_label: np.array) -> np.array:
+        """
+        Compute the gradient of MSE loss with respect to logits when using softmax activation.
+
+        Args:
+            y_label: NumPy array of shape (batch_size, num_classes)
+
+        Returns:
+            Gradient of MSE loss with respect to logits
+        """
+
+        # Calculate the difference between predictions and true labels
+        diff = self.h - y_label
+
+        # Calculate the gradient
+        n_samples, n_classes = self.h.shape
+        gradient = np.zeros_like(self.h)
+
+        # Vectorized implementation of the gradient formula
+        for j in range(n_classes):
+            # Create a mask for the Kronecker delta (1_{i=j})
+            kronecker_delta = np.zeros(n_classes)
+            kronecker_delta[j] = 1
+
+            # For each sample, calculate gradient for class j
+            for sample_idx in range(n_samples):
+                sample_pred = self.h[sample_idx]
+                sample_diff = diff[sample_idx]
+
+                # Implement the formula: 2 * sum_i [(y_pred_i - y_true_i) * y_pred_i * (1_{i=j} - y_pred_j)]
+                gradient[sample_idx, j] = 2 * np.sum(
+                    sample_diff * sample_pred * (kronecker_delta - sample_pred[j])
+                )
+
+        return gradient
+
     def backpropagation(self, y_label: np.array, prev_layer_h: np.array):
         # self.L_theta_by_y_hat = np.dot(-1/self.h, y_label)
-        self.L_theta_by_a = -1 * (y_label - self.h)
+        if config["loss_fn"] == "cross entropy":
+            self.L_theta_by_a = -1 * (y_label - self.h)
+        elif config["loss_fn"] == "mse":
+            self.L_theta_by_a = self.mse_softmax_gradient(y_label)
         self.L_theta_by_w = (
             np.matmul(self.L_theta_by_a.T, prev_layer_h)
             + config["L2_regularisation"] * self.weight

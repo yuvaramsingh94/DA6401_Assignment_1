@@ -13,6 +13,8 @@ from configuration import config
 wandb.require("core")
 wandb.login(key=WANDB_API)
 
+## TODO: Check the MSE implementation
+
 
 wandb.init(
     # Set the project where this run will be logged
