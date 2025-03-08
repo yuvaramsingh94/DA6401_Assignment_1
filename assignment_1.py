@@ -5,7 +5,7 @@ import numpy as np
 from keras.datasets import fashion_mnist
 from layers import HiddenLayer, OutputLayer
 from optimizers import SGD, momentum, Adam, Nadam, RMSprop
-from loss_function import cross_entropy
+from loss_function import cross_entropy, mse
 import tqdm
 import copy
 from configuration import config
@@ -237,12 +237,15 @@ for epoch in range(1, config["epochs"] + 1):
         y_pred_list.append(op)
         # Calcualte the loss
         # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-        temp_1 = np.concat(my_net.weight_l2)
-        temp_2 = np.concat(my_net.bias_l2)
-        l2_reg = temp_1.sum() + temp_2.sum()
+
+        l2_reg = np.concat(my_net.weight_l2).sum() + np.concat(my_net.bias_l2).sum()
+
+        if config["loss_fn"] == ["cross entropy"]:
+            main_loss = cross_entropy(y_pred=op, y_label=train_y)
+        elif config["loss_fn"] == "mse":
+            main_loss = mse(y_pred=op, y_label=train_y)
         training_loss_list.append(
-            cross_entropy(y_pred=op, y_label=train_y)
-            + (config["L2_regularisation"] / 2) * l2_reg
+            main_loss + (config["L2_regularisation"] / 2) * l2_reg
         )
         my_net.backpropagation(x_train=train_x, y_label=train_y)
         if my_net.optimizer != "NAG":
@@ -271,9 +274,13 @@ for epoch in range(1, config["epochs"] + 1):
         temp_1 = np.concat(my_net.weight_l2)
         temp_2 = np.concat(my_net.bias_l2)
         l2_reg = temp_1.sum() + temp_2.sum()
+
+        if config["loss_fn"] == "cross entropy":
+            main_loss = cross_entropy(y_pred=op, y_label=test_y)
+        elif config["loss_fn"] == "mse":
+            main_loss = mse(y_pred=op, y_label=test_y)
         validation_loss_list.append(
-            cross_entropy(y_pred=op, y_label=test_y)
-            + (config["L2_regularisation"] / 2) * l2_reg
+            main_loss + (config["L2_regularisation"] / 2) * l2_reg
         )
     val_accuracy = accuracy(y_list, y_pred_list)
     ##
