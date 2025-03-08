@@ -2,9 +2,6 @@ import os
 import wandb
 from API_key import WANDB_API
 import numpy as np
-from keras.datasets import fashion_mnist
-from layers import HiddenLayer, OutputLayer
-from optimizers import SGD, momentum, Adam, Nadam, RMSprop
 from loss_function import cross_entropy, mse
 import tqdm
 import copy
