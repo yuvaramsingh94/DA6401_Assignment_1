@@ -3,29 +3,16 @@ import wandb
 from API_key import WANDB_API
 import numpy as np
 from keras.datasets import fashion_mnist
+from layers import HiddenLayer, OutputLayer
+from optimizers import SGD, momentum, Adam, Nadam, RMSprop
+from loss_function import cross_entropy
 import tqdm
 import copy
+from configuration import config
 
 wandb.require("core")
 wandb.login(key=WANDB_API)
 
-
-## Setup the configuration
-config = {
-    "epochs": 10,
-    "num_hidden_layers": 3,
-    "neurons_per_hidden_layer": [32, 32, 32],
-    "num_of_output_neuron": 10,
-    "learning_rate": 0.00001,
-    "batch_size": 4,
-    "hidden_activation": "sigmoid",
-    "optimizer": "Nadam",  # momentum
-    "momentum_beta": 0.5,
-    "RMS_epsilon": 1e-5,
-    "RMSprop_beta": 0.5,
-    "adam_beta_1": 0.9,
-    "adam_beta_2": 0.999,
-}
 
 wandb.init(
     # Set the project where this run will be logged
@@ -37,317 +24,52 @@ wandb.init(
 )
 
 ## TODO:  split training data for validation 10%
-(x_train, y_train_int), (x_test, y_test_int) = fashion_mnist.load_data()
+(x_Train, y_train_int), (x_test, y_test_int) = fashion_mnist.load_data()
 ## Normalize the x
-x_train = (x_train - x_train.mean()) / x_train.std()
+x_Train = (x_Train - x_Train.mean()) / x_Train.std()
 x_test = (x_test - x_test.mean()) / x_test.std()
-# print("Train", x_train.min(), x_train.max())
+# print("Train", x_Train.min(), x_Train.max())
 ## One hot encode the Y
-y_train = np.zeros((y_train_int.size, y_train_int.max() + 1))
-y_train[np.arange(y_train_int.size), y_train_int] = 1
+y_Train = np.zeros((y_train_int.size, y_train_int.max() + 1))
+y_Train[np.arange(y_train_int.size), y_train_int] = 1
 
 y_test = np.zeros((y_test_int.size, y_test_int.max() + 1))
 y_test[np.arange(y_test_int.size), y_test_int] = 1
 
+num_validation_samples = int(len(x_Train) * config["validation_split"])
+indices = np.arange(len(x_Train))
+np.random.shuffle(indices)
+
+# Split the data
+val_indices = indices[:num_validation_samples]
+train_indices = indices[num_validation_samples:]
+
+x_val = x_Train[val_indices]
+y_val = y_Train[val_indices]
+
+x_train = x_Train[train_indices]
+y_train = y_Train[train_indices]
+
+## Split the x_train into validation
+
 
 x_train = x_train.reshape(len(x_train), -1)
+x_val = x_val.reshape(len(x_val), -1)
 x_test = x_test.reshape(len(x_test), -1)
 print("Dataset summary")
 print("Train", x_train.shape, y_train.shape)
+print("Val", x_val.shape, y_val.shape)
 print("Test", x_test.shape, y_test.shape)
 
 
-def sigmoid(x: np.array) -> np.array:
-    x = np.clip(x, None, 709)  # Clip values at 709 to avoid overflow
-    return 1 / (1 + np.exp(-x))
+def accuracy(y_actual: list, y_pred: list):
+    y_actual = np.concat(y_actual, axis=0)
+    y_pred = np.concat(y_pred, axis=0)
 
+    y_pred_classes = np.argmax(y_pred, axis=1)
+    y_true_classes = np.argmax(y_actual, axis=1)
 
-def softmax(x: np.array) -> np.array:
-    x = np.clip(x, None, 709)  # Clip values at 709 to avoid overflow
-    e_x = np.exp(x)
-    return e_x / e_x.sum()
-
-
-def tanh(x: np.array) -> np.array:
-    x = np.clip(x, None, 709)  # Clip values at 709 to avoid overflow
-    return (np.exp(x) - np.exp(-x)) / (np.exp(x) + np.exp(-x))
-
-
-def relu(x: np.array) -> np.array:
-    return np.maximum(0, x)
-
-
-def cross_entropy(y_pred: np.array, y_label: np.array) -> np.array:
-    epsilon = 1e-10
-    dot_ = y_label * np.log(y_pred + epsilon)
-    # dot_ = np.dot(y_label,np.log(y_pred))
-    return -dot_  # .sum()
-
-
-class HiddenLayer:
-    def __init__(
-        self,
-        num_of_nodes: int,
-        num_of_nodes_prev_layer: int,
-        activation: str = "sigmoid",
-    ):
-        self.num_of_nodes = num_of_nodes
-        self.num_of_nodes_prev_layer = num_of_nodes_prev_layer
-        self.activation = activation
-        self.weight = np.random.normal(
-            0, 1, size=(self.num_of_nodes, self.num_of_nodes_prev_layer)
-        )
-        self.bias = np.random.normal(0, 1, size=(self.num_of_nodes, 1))
-        ## Set this as zero for now
-        self.u_w = np.zeros_like(self.weight)
-        self.u_b = np.zeros_like(self.bias)
-
-        ## Set this as zero for now
-        self.v_w = np.zeros_like(self.weight)
-        self.v_b = np.zeros_like(self.bias)
-
-        ## Set this as zero for now
-        self.m_w = np.zeros_like(self.weight)
-        self.m_b = np.zeros_like(self.bias)
-
-    def forward(self, input):
-        temp = np.matmul(self.weight, input.T).T
-        self.a = temp + self.bias.T  ## Need to check the input shape?
-        if self.activation == "sigmoid":
-            self.h = sigmoid(self.a)
-        if self.activation == "tanh":
-            self.h = tanh(self.a)
-        if self.activation == "relu":
-            self.h = relu(self.a)
-
-    def backpropagation(
-        self,
-        next_layer_w: np.array,
-        next_layer_L_theta_by_a: np.array,
-        prev_layer_h: np.array,
-    ):
-        self.L_theta_by_h = np.matmul(
-            next_layer_w.T, next_layer_L_theta_by_a.T
-        ).T  # (4,100)
-        ## get the g hat function for the sigmoid function
-        if self.activation == "sigmoid":
-            ## Here is some problem with getting the g_hat
-            self.g_hat = np.multiply(self.h, (1 - self.h))
-        elif self.activation == "tanh":
-            self.g_hat = 1 - np.multiply(self.h, self.h)
-        elif self.activation == "relu":
-            self.g_hat = np.where(self.h > 0, 1, 0)
-
-        ## calculate the L_theta_by_a
-
-        self.L_theta_by_a = np.multiply(self.L_theta_by_h, self.g_hat)
-        self.L_theta_by_w = np.matmul(self.L_theta_by_a.T, prev_layer_h)
-        self.L_theta_by_b = np.expand_dims(self.L_theta_by_a.sum(axis=0), axis=-1)
-
-
-class OutputLayer:
-    def __init__(
-        self,
-        num_of_output_neuron: int,
-        num_of_nodes_prev_layer: int,
-        activation: str = "softmax",
-    ):
-        self.num_of_output_neuron = num_of_output_neuron
-        self.num_of_nodes_prev_layer = num_of_nodes_prev_layer
-        self.activation = activation
-        self.weight = np.random.normal(
-            0, 1, size=(self.num_of_output_neuron, self.num_of_nodes_prev_layer)
-        )
-        self.bias = np.random.normal(0, 1, size=(self.num_of_output_neuron, 1))
-
-        ## Set this as zero for now
-        self.u_w = np.zeros_like(self.weight)
-        self.u_b = np.zeros_like(self.bias)
-
-        ## Set this as zero for now
-        self.v_w = np.zeros_like(self.weight)
-        self.v_b = np.zeros_like(self.bias)
-
-        ## Set this as zero for now
-        self.m_w = np.zeros_like(self.weight)
-        self.m_b = np.zeros_like(self.bias)
-
-    def forward(self, input: np.array):
-        temp = np.matmul(self.weight, input.T).T
-        self.a = temp + self.bias.T  ## Need to check the input shape?
-        if self.activation == "softmax":
-            self.h = softmax(self.a)
-
-    def backpropagation(self, y_label: np.array, prev_layer_h: np.array):
-        # self.L_theta_by_y_hat = np.dot(-1/self.h, y_label)
-        self.L_theta_by_a = -1 * (y_label - self.h)
-        self.L_theta_by_w = np.matmul(self.L_theta_by_a.T, prev_layer_h)
-        self.L_theta_by_b = np.expand_dims(self.L_theta_by_a.sum(axis=0), axis=-1)
-        # print("Hi")
-
-
-def SGD(layer: dict, learning_rate: float):
-    layer["layer"].weight -= np.clip(
-        layer["layer"].L_theta_by_w * learning_rate, a_min=-1e5, a_max=1e5
-    )
-    layer["layer"].bias -= np.clip(
-        layer["layer"].L_theta_by_b * learning_rate, a_min=-1e5, a_max=1e5
-    )
-
-
-def momentum(layer: dict, learning_rate: float):
-
-    layer["layer"].u_w = (
-        config["momentum_beta"] * layer["layer"].u_w + layer["layer"].L_theta_by_w
-    )
-    layer["layer"].u_b = (
-        config["momentum_beta"] * layer["layer"].u_b + layer["layer"].L_theta_by_b
-    )
-
-    updated_weight = np.clip(layer["layer"].u_w * learning_rate, a_min=-0.1, a_max=0.1)
-    updated_bias = np.clip(layer["layer"].u_b * learning_rate, a_min=-0.1, a_max=0.1)
-
-    layer["layer"].weight -= updated_weight
-    layer["layer"].bias -= updated_bias
-
-
-def RMSprop(layer: dict, learning_rate: float):
-    layer["layer"].v_w = config["RMSprop_beta"] * layer["layer"].v_w + (
-        1 - config["RMSprop_beta"]
-    ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
-    layer["layer"].v_b = config["RMSprop_beta"] * layer["layer"].v_b + (
-        1 - config["RMSprop_beta"]
-    ) * np.multiply(layer["layer"].L_theta_by_b, layer["layer"].L_theta_by_b)
-
-    updated_weight = np.clip(
-        np.multiply(
-            layer["layer"].L_theta_by_w,
-            (learning_rate / np.sqrt(layer["layer"].v_w + config["RMS_epsilon"])),
-        ),
-        a_min=-0.1,
-        a_max=0.1,
-    )
-    updated_bias = np.clip(
-        np.multiply(
-            layer["layer"].L_theta_by_b,
-            (learning_rate / np.sqrt(layer["layer"].v_b + config["RMS_epsilon"])),
-        ),
-        a_min=-0.1,
-        a_max=0.1,
-    )
-
-    layer["layer"].weight -= updated_weight
-    layer["layer"].bias -= updated_bias
-
-
-def Adam(layer: dict, learning_rate: float, epoch: int):
-
-    ## Setup the Momuntum side of the optimization
-    layer["layer"].m_w = (
-        config["adam_beta_1"] * layer["layer"].m_w
-        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_w
-    )
-    ## Not adding m_hat to the layer as i dont see the need to track it as of now
-    m_hat_w = layer["layer"].m_w / (1 - config["adam_beta_1"] ** epoch)
-    layer["layer"].m_b = (
-        config["adam_beta_1"] * layer["layer"].m_b
-        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_b
-    )
-    m_hat_b = layer["layer"].m_b / (1 - config["adam_beta_1"] ** epoch)
-
-    ## Setup the V side of the optimization
-    layer["layer"].v_w = config["adam_beta_2"] * layer["layer"].v_w + (
-        1 - config["adam_beta_2"]
-    ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
-
-    v_hat_w = layer["layer"].v_w / (1 - config["adam_beta_2"] ** epoch)
-
-    layer["layer"].v_b = config["adam_beta_2"] * layer["layer"].v_b + (
-        1 - config["adam_beta_2"]
-    ) * np.multiply(layer["layer"].L_theta_by_b, layer["layer"].L_theta_by_b)
-
-    v_hat_b = layer["layer"].v_b / (1 - config["adam_beta_2"] ** epoch)
-
-    updated_weight = np.clip(
-        np.multiply(
-            m_hat_w, (learning_rate / (np.sqrt(v_hat_w) + config["RMS_epsilon"]))
-        ),
-        a_min=-0.1,
-        a_max=0.1,
-    )
-    updated_bias = np.clip(
-        np.multiply(
-            m_hat_b, (learning_rate / (np.sqrt(v_hat_b) + config["RMS_epsilon"]))
-        ),
-        a_min=-0.1,
-        a_max=0.1,
-    )
-
-    layer["layer"].weight -= updated_weight
-    layer["layer"].bias -= updated_bias
-
-
-def Nadam(layer: dict, learning_rate: float, epoch: int):
-
-    ## Setup the Momuntum side of the optimization
-    layer["layer"].m_w = (
-        config["adam_beta_1"] * layer["layer"].m_w
-        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_w
-    )
-    ## Not adding m_hat to the layer as i dont see the need to track it as of now
-    m_hat_w = layer["layer"].m_w / (1 - config["adam_beta_1"] ** (epoch + 1))
-    layer["layer"].m_b = (
-        config["adam_beta_1"] * layer["layer"].m_b
-        + (1 - config["adam_beta_1"]) * layer["layer"].L_theta_by_b
-    )
-    m_hat_b = layer["layer"].m_b / (1 - config["adam_beta_1"] ** (epoch + 1))
-
-    ## Setup the V side of the optimization
-    layer["layer"].v_w = config["adam_beta_2"] * layer["layer"].v_w + (
-        1 - config["adam_beta_2"]
-    ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
-
-    v_hat_w = layer["layer"].v_w / (1 - config["adam_beta_2"] ** (epoch + 1))
-
-    layer["layer"].v_b = config["adam_beta_2"] * layer["layer"].v_b + (
-        1 - config["adam_beta_2"]
-    ) * np.multiply(layer["layer"].L_theta_by_b, layer["layer"].L_theta_by_b)
-
-    v_hat_b = layer["layer"].v_b / (1 - config["adam_beta_2"] ** (epoch + 1))
-
-    updated_weight = np.clip(
-        np.multiply(
-            (
-                config["adam_beta_1"] * m_hat_w
-                + (
-                    (1 - config["adam_beta_1"])
-                    / (1 - config["adam_beta_1"] ** (epoch + 1))
-                )
-                * layer["layer"].L_theta_by_w
-            ),
-            (learning_rate / (np.sqrt(v_hat_w) + config["RMS_epsilon"])),
-        ),
-        a_min=-0.1,
-        a_max=0.1,
-    )
-    updated_bias = np.clip(
-        np.multiply(
-            (
-                config["adam_beta_1"] * m_hat_b
-                + (
-                    (1 - config["adam_beta_1"])
-                    / (1 - config["adam_beta_1"] ** (epoch + 1))
-                )
-                * layer["layer"].L_theta_by_b
-            ),
-            (learning_rate / (np.sqrt(v_hat_b) + config["RMS_epsilon"])),
-        ),
-        a_min=-0.1,
-        a_max=0.1,
-    )
-
-    layer["layer"].weight -= updated_weight
-    layer["layer"].bias -= updated_bias
+    return np.mean(y_true_classes == y_pred_classes)
 
 
 class NeuralNetwork:
@@ -404,13 +126,16 @@ class NeuralNetwork:
         }
 
     def forward_pass(self, x):
-
+        self.weight_l2 = []
+        self.bias_l2 = []
         for layer in self.nn_dict.values():
             ## forward pass
             layer["layer"].forward(x)
             layer["a"] = layer["layer"].a
             layer["h"] = layer["layer"].h
             x = layer["h"]
+            self.weight_l2.append(layer["layer"].weight_l2)
+            self.bias_l2.append(layer["layer"].bias_l2)
 
         return x
 
@@ -502,13 +227,23 @@ BATCH_SIZE = config["batch_size"]
 for epoch in range(1, config["epochs"] + 1):
     training_loss_list = []
     validation_loss_list = []
+    y_pred_list = []
+    y_list = []
     for i in tqdm.tqdm(range(x_train.shape[0] // 4)):
         train_x = x_train[i * BATCH_SIZE : i * BATCH_SIZE + BATCH_SIZE]
         train_y = y_train[i * BATCH_SIZE : i * BATCH_SIZE + BATCH_SIZE]
+        y_list.append(train_y)
         op = my_net.forward_pass(train_x)
+        y_pred_list.append(op)
         # Calcualte the loss
         # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-        training_loss_list.append(cross_entropy(y_pred=op, y_label=train_y))
+        temp_1 = np.concat(my_net.weight_l2)
+        temp_2 = np.concat(my_net.bias_l2)
+        l2_reg = temp_1.sum() + temp_2.sum()
+        training_loss_list.append(
+            cross_entropy(y_pred=op, y_label=train_y)
+            + (config["L2_regularisation"] / 2) * l2_reg
+        )
         my_net.backpropagation(x_train=train_x, y_label=train_y)
         if my_net.optimizer != "NAG":
             my_net.update(epoch=epoch)
@@ -521,14 +256,26 @@ for epoch in range(1, config["epochs"] + 1):
 
             del temp_net
             ## Do a Forward pass and backpropagation to get the gradients
+    train_accuracy = accuracy(y_list, y_pred_list)
 
+    y_pred_list = []
+    y_list = []
     for i in tqdm.tqdm(range(x_test.shape[0] // 4)):
         test_x = x_test[i * BATCH_SIZE : i * BATCH_SIZE + BATCH_SIZE]
         test_y = y_test[i * BATCH_SIZE : i * BATCH_SIZE + BATCH_SIZE]
+        y_list.append(test_y)
         op = my_net.forward_pass(test_x)
+        y_pred_list.append(op)
         # Calcualte the loss
         # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-        validation_loss_list.append(cross_entropy(y_pred=op, y_label=test_y))
+        temp_1 = np.concat(my_net.weight_l2)
+        temp_2 = np.concat(my_net.bias_l2)
+        l2_reg = temp_1.sum() + temp_2.sum()
+        validation_loss_list.append(
+            cross_entropy(y_pred=op, y_label=test_y)
+            + (config["L2_regularisation"] / 2) * l2_reg
+        )
+    val_accuracy = accuracy(y_list, y_pred_list)
     ##
 
     # print(
@@ -544,5 +291,7 @@ for epoch in range(1, config["epochs"] + 1):
         {
             "Training loss": np.array(training_loss_list).reshape(-1).mean(),
             "Validation loss": np.array(validation_loss_list).reshape(-1).mean(),
+            "Train accucary": train_accuracy,
+            "Validation accucary": val_accuracy,
         }
     )
