@@ -21,7 +21,7 @@ class HiddenLayer:
                 0, 1, size=(self.num_of_nodes, self.num_of_nodes_prev_layer)
             )
             self.bias = np.random.normal(0, 1, size=(self.num_of_nodes, 1))
-        elif self.config["weight_initialisation"] == "xavier":
+        elif self.config["weight_initialisation"] == "Xavier":
             xavier = np.sqrt(6 / (self.num_of_nodes + self.num_of_nodes_prev_layer))
             self.weight = np.random.uniform(
                 -xavier,
@@ -52,7 +52,7 @@ class HiddenLayer:
             self.h = sigmoid(self.a)
         if self.activation == "tanh":
             self.h = tanh(self.a)
-        if self.activation == "relu":
+        if self.activation == "ReLU":
             self.h = relu(self.a)
 
         self.weight_l2 = np.multiply(self.weight, self.weight).reshape(-1)
@@ -73,8 +73,8 @@ class HiddenLayer:
             self.g_hat = np.multiply(self.h, (1 - self.h))
         elif self.activation == "tanh":
             self.g_hat = 1 - np.multiply(self.h, self.h)
-        elif self.activation == "relu":
-            self.g_hat = np.where(self.h > 0, 1, 0)
+        elif self.activation == "ReLU":
+            self.g_hat = np.where(self.a > 0, 1, 0)
 
         ## calculate the L_theta_by_a
 
@@ -106,7 +106,7 @@ class OutputLayer:
                 0, 1, size=(self.num_of_output_neuron, self.num_of_nodes_prev_layer)
             )
             self.bias = np.random.normal(0, 1, size=(self.num_of_output_neuron, 1))
-        elif self.config["weight_initialisation"] == "xavier":
+        elif self.config["weight_initialisation"] == "Xavier":
             self.weight = np.random.uniform(
                 -(
                     np.sqrt(
@@ -193,9 +193,9 @@ class OutputLayer:
 
     def backpropagation(self, y_label: np.array, prev_layer_h: np.array):
         # self.L_theta_by_y_hat = np.dot(-1/self.h, y_label)
-        if self.config["loss_fn"] == "cross entropy":
+        if self.config["loss_fn"] == "cross_entropy":
             self.L_theta_by_a = -1 * (y_label - self.h)
-        elif self.config["loss_fn"] == "mse":
+        elif self.config["loss_fn"] == "mean_squared_error":
             self.L_theta_by_a = self.mse_softmax_gradient(y_label)
         self.L_theta_by_w = (
             np.matmul(self.L_theta_by_a.T, prev_layer_h)

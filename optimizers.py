@@ -2,25 +2,28 @@ import numpy as np
 
 
 def SGD(layer: dict, learning_rate: float, config: dict):
-    layer["layer"].weight -= np.clip(
-        layer["layer"].L_theta_by_w * learning_rate, a_min=-1e5, a_max=1e5
-    )
-    layer["layer"].bias -= np.clip(
-        layer["layer"].L_theta_by_b * learning_rate, a_min=-1e5, a_max=1e5
-    )
+
+    L_theta_by_w_clipped = np.clip(layer["layer"].L_theta_by_w, a_min=-1, a_max=1)
+    L_theta_by_b_clipped = np.clip(layer["layer"].L_theta_by_b, a_min=-1, a_max=1)
+    layer["layer"].weight -= L_theta_by_w_clipped * learning_rate
+    layer["layer"].bias -= L_theta_by_b_clipped * learning_rate
 
 
 def momentum(layer: dict, learning_rate: float, config: dict):
 
-    layer["layer"].u_w = (
-        config["momentum_beta"] * layer["layer"].u_w + layer["layer"].L_theta_by_w
+    layer["layer"].u_w = np.clip(
+        (config["momentum_beta"] * layer["layer"].u_w + layer["layer"].L_theta_by_w),
+        a_min=-1,
+        a_max=1,
     )
-    layer["layer"].u_b = (
-        config["momentum_beta"] * layer["layer"].u_b + layer["layer"].L_theta_by_b
+    layer["layer"].u_b = np.clip(
+        (config["momentum_beta"] * layer["layer"].u_b + layer["layer"].L_theta_by_b),
+        a_min=-1,
+        a_max=1,
     )
 
-    updated_weight = np.clip(layer["layer"].u_w * learning_rate, a_min=-0.1, a_max=0.1)
-    updated_bias = np.clip(layer["layer"].u_b * learning_rate, a_min=-0.1, a_max=0.1)
+    updated_weight = layer["layer"].u_w * learning_rate
+    updated_bias = layer["layer"].u_b * learning_rate
 
     layer["layer"].weight -= updated_weight
     layer["layer"].bias -= updated_bias
@@ -39,16 +42,16 @@ def RMSprop(layer: dict, learning_rate: float, config: dict):
             layer["layer"].L_theta_by_w,
             (learning_rate / np.sqrt(layer["layer"].v_w + config["RMS_epsilon"])),
         ),
-        a_min=-0.1,
-        a_max=0.1,
+        a_min=-1,
+        a_max=1,
     )
     updated_bias = np.clip(
         np.multiply(
             layer["layer"].L_theta_by_b,
             (learning_rate / np.sqrt(layer["layer"].v_b + config["RMS_epsilon"])),
         ),
-        a_min=-0.1,
-        a_max=0.1,
+        a_min=-1,
+        a_max=1,
     )
 
     layer["layer"].weight -= updated_weight
@@ -87,15 +90,15 @@ def Adam(layer: dict, learning_rate: float, epoch: int, config: dict):
         np.multiply(
             m_hat_w, (learning_rate / (np.sqrt(v_hat_w) + config["RMS_epsilon"]))
         ),
-        a_min=-0.1,
-        a_max=0.1,
+        a_min=-1,
+        a_max=1,
     )
     updated_bias = np.clip(
         np.multiply(
             m_hat_b, (learning_rate / (np.sqrt(v_hat_b) + config["RMS_epsilon"]))
         ),
-        a_min=-0.1,
-        a_max=0.1,
+        a_min=-1,
+        a_max=1,
     )
 
     layer["layer"].weight -= updated_weight
@@ -142,8 +145,8 @@ def Nadam(layer: dict, learning_rate: float, epoch: int, config: dict):
             ),
             (learning_rate / (np.sqrt(v_hat_w) + config["RMS_epsilon"])),
         ),
-        a_min=-0.1,
-        a_max=0.1,
+        a_min=-1,
+        a_max=1,
     )
     updated_bias = np.clip(
         np.multiply(
@@ -157,8 +160,8 @@ def Nadam(layer: dict, learning_rate: float, epoch: int, config: dict):
             ),
             (learning_rate / (np.sqrt(v_hat_b) + config["RMS_epsilon"])),
         ),
-        a_min=-0.1,
-        a_max=0.1,
+        a_min=-1,
+        a_max=1,
     )
 
     layer["layer"].weight -= updated_weight

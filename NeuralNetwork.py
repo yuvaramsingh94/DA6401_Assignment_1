@@ -106,17 +106,17 @@ class NeuralNetwork:
 
         for count, (_, layer) in enumerate(list(self.nn_dict.items())):
 
-            if self.optimizer == "SGD":
+            if self.optimizer == "sgd":
                 SGD(layer, self.learning_rate, self.config)
 
             elif self.optimizer == "momentum":
                 momentum(layer, self.learning_rate, self.config)
-            elif self.optimizer == "RMSprop":
+            elif self.optimizer == "rmsprop":
                 RMSprop(layer, self.learning_rate, self.config)
 
-            elif self.optimizer == "Adam":
+            elif self.optimizer == "adam":
                 Adam(layer, self.learning_rate, epoch, self.config)
-            elif self.optimizer == "Nadam":
+            elif self.optimizer == "nadam":
                 Nadam(layer, self.learning_rate, epoch, self.config)
 
     def NAG_look_weight_update(self):
