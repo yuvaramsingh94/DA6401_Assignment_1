@@ -25,18 +25,25 @@ print("Val", x_val.shape, y_val.shape)
 print("Test", x_test.shape, y_test.shape)
 
 # 2: Define the search space
+## TODO: higher learning rate
 sweep_configuration = {
     "method": "random",
     "metric": {"goal": "maximize", "name": "val_accuracy"},
     "parameters": {
-        "learning_rate": {"max": 0.0001, "min": 0.00001},
+        "learning_rate": {"max": 0.01, "min": 0.000001},
         "optimizer": {"values": ["sgd", "momentum", "nag", "rmsprop", "adam", "nadam"]},
         "neurons_per_hidden_layer": {"values": [32, 64, 128]},
         "num_hidden_layers": {"values": [3, 4, 5]},
-        "L2_regularisation": {"values": [0, 0.0005, 0.5]},
+        "L2_regularisation": {
+            "values": [
+                0,
+                0.0005,
+            ]
+        },  # 0.5
         "batch_size": {"values": [4, 16, 32, 64]},
+        "epochs": {"values": [5, 10]},
         "weight_initialisation": {"values": ["random", "Xavier"]},
-        "hidden_activation": {"values": ["sigmoid", "tanh", "ReLU"]},
+        "hidden_activation": {"values": ["sigmoid", "tanh", "ReLU", "identity"]},
     },
 }
 
@@ -49,6 +56,7 @@ def main():
         # Track hyperparameters and run metadata
         # config=config,
     )
+    wandb.run.name = f"H_{wandb.config.neurons_per_hidden_layer}_O_{wandb.config.optimizer}_a_{wandb.config.hidden_activation}_b_{wandb.config.batch_size}"
     ## Update the config dict with the hpt from sweep
     config["learning_rate"] = wandb.config.learning_rate
     config["optimizer"] = wandb.config.optimizer
@@ -60,6 +68,7 @@ def main():
     config["batch_size"] = wandb.config.batch_size
     config["weight_initialisation"] = wandb.config.weight_initialisation
     config["hidden_activation"] = wandb.config.hidden_activation
+    config["epochs"] = wandb.config.epochs
 
     my_net = NeuralNetwork(
         num_hidden_layers=config["num_hidden_layers"],
@@ -139,4 +148,4 @@ def main():
 ## initialize the HPT
 sweep_id = wandb.sweep(sweep=sweep_configuration, project="Fashion-MNIST-sweep")
 
-wandb.agent(sweep_id, function=main, count=2)
+wandb.agent(sweep_id, function=main, count=50)

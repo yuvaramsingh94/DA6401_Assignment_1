@@ -122,10 +122,10 @@ class NeuralNetwork:
     def NAG_look_weight_update(self):
         for count, (_, layer) in enumerate(list(self.nn_dict.items())):
             layer["layer"].weight -= np.clip(
-                self.config["momentum_beta"] * layer["layer"].u_w, a_min=-1e5, a_max=1e5
+                self.config["momentum_beta"] * layer["layer"].u_w, a_min=-1, a_max=1
             )
             layer["layer"].bias -= np.clip(
-                self.config["momentum_beta"] * layer["layer"].u_b, a_min=-1e5, a_max=1e5
+                self.config["momentum_beta"] * layer["layer"].u_b, a_min=-1, a_max=1
             )
 
     def NAG_leep_weight_update(self, temp_net: "NeuralNetwork"):
@@ -142,10 +142,10 @@ class NeuralNetwork:
             )
 
             updated_weight = np.clip(
-                layer_actual["layer"].u_w * self.learning_rate, a_min=-0.1, a_max=0.1
+                layer_actual["layer"].u_w * self.learning_rate, a_min=-1, a_max=1
             )
             updated_bias = np.clip(
-                layer_actual["layer"].u_b * self.learning_rate, a_min=-0.1, a_max=0.1
+                layer_actual["layer"].u_b * self.learning_rate, a_min=-1, a_max=1
             )
 
             layer_actual["layer"].weight -= updated_weight

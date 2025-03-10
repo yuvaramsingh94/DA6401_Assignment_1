@@ -9,8 +9,12 @@ import copy
 from configuration import config
 from NeuralNetwork import NeuralNetwork
 from utils import accuracy, data_loader, parse_arguments, update_configuration
+import matplotlib.pyplot as plt
 
-## TODO: implement the identity activation
+## TODO: implement the identity activation - Done
+## TODO: write documentation
+## TODO: Image wandb - DOne
+## TODO: Readme
 
 wandb.require("core")
 wandb.login(key=WANDB_API)
@@ -33,93 +37,134 @@ print("Val", x_val.shape, y_val.shape)
 print("Test", x_test.shape, y_test.shape)
 
 
-my_net = NeuralNetwork(
-    num_hidden_layers=config["num_hidden_layers"],
-    neurons_per_hidden_layer=config["neurons_per_hidden_layer"],
-    num_of_output_neuron=config["num_of_output_neuron"],
-    learning_rate=config["learning_rate"],
-    hidden_activation=config["hidden_activation"],
-    optimizer=config["optimizer"],
-    config=config,
-)
-BATCH_SIZE = config["batch_size"]
-for epoch in range(1, config["epochs"] + 1):
-    training_loss_list = []
-    validation_loss_list = []
-    y_pred_list = []
-    y_list = []
-    for i in tqdm.tqdm(range(x_train.shape[0] // BATCH_SIZE)):
-        train_x = x_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
-        train_y = y_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
-        y_list.append(train_y)
-        op = my_net.forward_pass(train_x)
-        y_pred_list.append(op)
-        # Calcualte the loss
-        # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
+## Display the image
 
-        l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
-            np.concatenate(my_net.bias_l2)
-        )
+fig, axes = plt.subplots(2, 5, figsize=(50, 45))
+axes = axes.ravel()  # Flatten the axes array for easy indexing
+class_names = [
+    "T-shirt/top",
+    "Trouser",
+    "Pullover",
+    "Dress",
+    "Coat",
+    "Sandal",
+    "Shirt",
+    "Sneaker",
+    "Bag",
+    "Ankle boot",
+]
+# Iterate through the classes and plot one image per class
+for i in range(10):
+    # Find the first image index for the current class
+    idx = np.where(np.argmax(y_train, axis=1) == i)[0][0]
 
-        if config["loss_fn"] == "cross_entropy":
-            main_loss = cross_entropy(y_pred=op, y_label=train_y)
-        elif config["loss_fn"] == "mean_squared_error":
-            main_loss = mse(y_pred=op, y_label=train_y)
-        training_loss_list.append(
-            main_loss + (config["L2_regularisation"] / 2) * l2_reg
-        )
-        my_net.backpropagation(x_train=train_x, y_label=train_y)
-        if my_net.optimizer != "nag":
-            my_net.update(epoch=epoch)
-        elif my_net.optimizer == "nag":
-            temp_net = copy.deepcopy(my_net)
-            temp_net.NAG_look_weight_update()
-            _ = temp_net.forward_pass(train_x)
-            temp_net.backpropagation(x_train=train_x, y_label=train_y)
-            my_net.NAG_leep_weight_update(temp_net)
+    # Plot the image on the corresponding subplot
+    axes[i].imshow(
+        x_train[idx].reshape(28, 28), cmap="gray"
+    )  # Use 'gray' colormap for Fashion MNIST
+    axes[i].set_title(class_names[i])
+    axes[i].axis("off")  # Hide axes ticks and labels
 
-            del temp_net
-            ## Do a Forward pass and backpropagation to get the gradients
-    train_accuracy = accuracy(y_list, y_pred_list)
+# Adjust layout to prevent overlapping titles/labels
+plt.tight_layout()
 
-    y_pred_list = []
-    y_list = []
-    for i in tqdm.tqdm(range(x_val.shape[0] // BATCH_SIZE)):
-        val_x = x_val[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
-        val_y = y_val[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
-        y_list.append(val_y)
-        op = my_net.forward_pass(val_x)
-        y_pred_list.append(op)
-        # Calcualte the loss
-        # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-        l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
-            np.concatenate(my_net.bias_l2)
-        )
+# Log the plot to wandb
+wandb.log({"Fashion MNIST Classes": fig})
 
-        if config["loss_fn"] == "cross_entropy":
-            main_loss = cross_entropy(y_pred=op, y_label=val_y)
-        elif config["loss_fn"] == "mean_squared_error":
-            main_loss = mse(y_pred=op, y_label=val_y)
-        validation_loss_list.append(
-            main_loss + (config["L2_regularisation"] / 2) * l2_reg
-        )
-    val_accuracy = accuracy(y_list, y_pred_list)
-    ##
 
-    # print(
-    #     f"Training loss at epoch {epoch}",
-    #     np.array(training_loss_list).reshape(-1).mean(),
-    # )
-    # print(
-    #     f"Validation loss at epoch {epoch}",
-    #     np.array(validation_loss_list).reshape(-1).mean(),
-    # )
-
-    wandb.log(
-        {
-            "Training loss": np.mean(training_loss_list),
-            "Validation loss": np.mean(validation_loss_list),
-            "Train accucary": train_accuracy,
-            "Validation accucary": val_accuracy,
-        }
+def main():
+    my_net = NeuralNetwork(
+        num_hidden_layers=config["num_hidden_layers"],
+        neurons_per_hidden_layer=config["neurons_per_hidden_layer"],
+        num_of_output_neuron=config["num_of_output_neuron"],
+        learning_rate=config["learning_rate"],
+        hidden_activation=config["hidden_activation"],
+        optimizer=config["optimizer"],
+        config=config,
     )
+    BATCH_SIZE = config["batch_size"]
+    for epoch in range(1, config["epochs"] + 1):
+        training_loss_list = []
+        validation_loss_list = []
+        y_pred_list = []
+        y_list = []
+        for i in tqdm.tqdm(range(x_train.shape[0] // BATCH_SIZE)):
+            train_x = x_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
+            train_y = y_train[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
+            y_list.append(train_y)
+            op = my_net.forward_pass(train_x)
+            y_pred_list.append(op)
+            # Calcualte the loss
+            # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
+
+            l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
+                np.concatenate(my_net.bias_l2)
+            )
+
+            if config["loss_fn"] == "cross_entropy":
+                main_loss = cross_entropy(y_pred=op, y_label=train_y)
+            elif config["loss_fn"] == "mean_squared_error":
+                main_loss = mse(y_pred=op, y_label=train_y)
+            training_loss_list.append(
+                main_loss + (config["L2_regularisation"] / 2) * l2_reg
+            )
+            my_net.backpropagation(x_train=train_x, y_label=train_y)
+            if my_net.optimizer != "nag":
+                my_net.update(epoch=epoch)
+            elif my_net.optimizer == "nag":
+                temp_net = copy.deepcopy(my_net)
+                temp_net.NAG_look_weight_update()
+                _ = temp_net.forward_pass(train_x)
+                temp_net.backpropagation(x_train=train_x, y_label=train_y)
+                my_net.NAG_leep_weight_update(temp_net)
+
+                del temp_net
+                ## Do a Forward pass and backpropagation to get the gradients
+        train_accuracy = accuracy(y_list, y_pred_list)
+
+        y_pred_list = []
+        y_list = []
+        for i in tqdm.tqdm(range(x_val.shape[0] // BATCH_SIZE)):
+            val_x = x_val[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
+            val_y = y_val[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
+            y_list.append(val_y)
+            op = my_net.forward_pass(val_x)
+            y_pred_list.append(op)
+            # Calcualte the loss
+            # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
+            l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
+                np.concatenate(my_net.bias_l2)
+            )
+
+            if config["loss_fn"] == "cross_entropy":
+                main_loss = cross_entropy(y_pred=op, y_label=val_y)
+            elif config["loss_fn"] == "mean_squared_error":
+                main_loss = mse(y_pred=op, y_label=val_y)
+            validation_loss_list.append(
+                main_loss + (config["L2_regularisation"] / 2) * l2_reg
+            )
+        val_accuracy = accuracy(y_list, y_pred_list)
+        ##
+
+        # print(
+        #     f"Training loss at epoch {epoch}",
+        #     np.array(training_loss_list).reshape(-1).mean(),
+        # )
+        # print(
+        #     f"Validation loss at epoch {epoch}",
+        #     np.array(validation_loss_list).reshape(-1).mean(),
+        # )
+
+        wandb.log(
+            {
+                "Training loss": np.mean(training_loss_list),
+                "Validation loss": np.mean(validation_loss_list),
+                "Train accucary": train_accuracy,
+                "Validation accucary": val_accuracy,
+            }
+        )
+    wandb.finish()
+
+
+if __name__ == "__main__":
+    main()

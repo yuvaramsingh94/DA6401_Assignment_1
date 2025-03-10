@@ -1,5 +1,6 @@
 import numpy as np
 from activation import sigmoid, relu, tanh, softmax
+import copy
 
 # from configuration import config
 
@@ -54,6 +55,8 @@ class HiddenLayer:
             self.h = tanh(self.a)
         if self.activation == "ReLU":
             self.h = relu(self.a)
+        if self.activation == "identity":
+            self.h = copy.deepcopy(self.a)
 
         self.weight_l2 = np.multiply(self.weight, self.weight).reshape(-1)
         self.bias_l2 = np.multiply(self.bias, self.bias).reshape(-1)
@@ -75,6 +78,8 @@ class HiddenLayer:
             self.g_hat = 1 - np.multiply(self.h, self.h)
         elif self.activation == "ReLU":
             self.g_hat = np.where(self.a > 0, 1, 0)
+        elif self.activation == "identity":
+            self.g_hat = np.ones_like(self.a)
 
         ## calculate the L_theta_by_a
 
@@ -107,30 +112,17 @@ class OutputLayer:
             )
             self.bias = np.random.normal(0, 1, size=(self.num_of_output_neuron, 1))
         elif self.config["weight_initialisation"] == "Xavier":
+            xavier = np.sqrt(
+                6 / (self.num_of_output_neuron + self.num_of_nodes_prev_layer)
+            )
             self.weight = np.random.uniform(
-                -(
-                    np.sqrt(
-                        6 / (self.num_of_output_neuron + self.num_of_nodes_prev_layer)
-                    )
-                ),
-                (
-                    np.sqrt(
-                        6 / (self.num_of_output_neuron + self.num_of_nodes_prev_layer)
-                    )
-                ),
+                -xavier,
+                xavier,
                 size=(self.num_of_output_neuron, self.num_of_nodes_prev_layer),
             )
             self.bias = np.random.uniform(
-                -(
-                    np.sqrt(
-                        6 / (self.num_of_output_neuron + self.num_of_nodes_prev_layer)
-                    )
-                ),
-                (
-                    np.sqrt(
-                        6 / (self.num_of_output_neuron + self.num_of_nodes_prev_layer)
-                    )
-                ),
+                -xavier,
+                xavier,
                 size=(self.num_of_output_neuron, 1),
             )
 

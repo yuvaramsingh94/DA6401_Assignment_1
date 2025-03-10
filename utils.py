@@ -3,7 +3,16 @@ from keras.datasets import fashion_mnist, mnist
 import argparse
 
 
-def accuracy(y_actual: list, y_pred: list):
+def accuracy(y_actual: list, y_pred: list) -> np.array:
+    """_summary_
+
+    Args:
+        y_actual (list): List of one hot 
+        y_pred (list): _description_
+
+    Returns:
+        np.array: _description_
+    """
     y_actual = np.concat(y_actual, axis=0)
     y_pred = np.concat(y_pred, axis=0)
 
