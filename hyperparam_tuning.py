@@ -2,8 +2,6 @@ import os
 import wandb
 from API_key import WANDB_API
 import numpy as np
-
-
 from loss_function import cross_entropy, mse
 import tqdm
 import copy
@@ -24,8 +22,7 @@ print("Train", x_train.shape, y_train.shape)
 print("Val", x_val.shape, y_val.shape)
 print("Test", x_test.shape, y_test.shape)
 
-# 2: Define the search space
-## TODO: higher learning rate
+
 sweep_configuration = {
     "method": "random",
     "metric": {"goal": "maximize", "name": "val_accuracy"},
@@ -50,6 +47,11 @@ sweep_configuration = {
 
 
 def main():
+    """
+    The main function that has all the code to run a training.
+    This will be used by the sweep agent to run multiple hyperparamter
+    tuning.
+    """
 
     wandb.init(
         # Set the project where this run will be logged
@@ -73,12 +75,6 @@ def main():
     config["epochs"] = wandb.config.epochs
 
     my_net = NeuralNetwork(
-        num_hidden_layers=config["num_hidden_layers"],
-        neurons_per_hidden_layer=config["neurons_per_hidden_layer"],
-        num_of_output_neuron=config["num_of_output_neuron"],
-        learning_rate=config["learning_rate"],
-        hidden_activation=config["hidden_activation"],
-        optimizer=config["optimizer"],
         config=config,
     )
     BATCH_SIZE = config["batch_size"]

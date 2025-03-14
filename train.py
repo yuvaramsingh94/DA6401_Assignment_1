@@ -74,12 +74,6 @@ wandb.log({"Fashion MNIST Classes": fig})
 
 def main():
     my_net = NeuralNetwork(
-        num_hidden_layers=config["num_hidden_layers"],
-        neurons_per_hidden_layer=config["neurons_per_hidden_layer"],
-        num_of_output_neuron=config["num_of_output_neuron"],
-        learning_rate=config["learning_rate"],
-        hidden_activation=config["hidden_activation"],
-        optimizer=config["optimizer"],
         config=config,
     )
     BATCH_SIZE = config["batch_size"]

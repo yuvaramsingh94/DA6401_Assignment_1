@@ -2,6 +2,14 @@ import numpy as np
 
 
 def SGD(layer: dict, learning_rate: float, config: dict):
+    """
+    SGD implementation
+
+    Args:
+        layer (dict): dictionary of layers
+        learning_rate (float): the learning rate to be applied
+        config (dict): configurations
+    """
 
     L_theta_by_w_clipped = np.clip(layer["layer"].L_theta_by_w, a_min=-1, a_max=1)
     L_theta_by_b_clipped = np.clip(layer["layer"].L_theta_by_b, a_min=-1, a_max=1)
@@ -10,6 +18,13 @@ def SGD(layer: dict, learning_rate: float, config: dict):
 
 
 def momentum(layer: dict, learning_rate: float, config: dict):
+    """_summary_
+
+    Args:
+        layer (dict): dictionary of layers
+        learning_rate (float): the learning rate to be applied
+        config (dict): configurations
+    """
 
     layer["layer"].u_w = np.clip(
         (config["momentum_beta"] * layer["layer"].u_w + layer["layer"].L_theta_by_w),
@@ -30,6 +45,13 @@ def momentum(layer: dict, learning_rate: float, config: dict):
 
 
 def RMSprop(layer: dict, learning_rate: float, config: dict):
+    """_summary_
+
+    Args:
+        layer (dict): dictionary of layers
+        learning_rate (float): the learning rate to be applied
+        config (dict): configurations
+    """
     layer["layer"].v_w = config["RMSprop_beta"] * layer["layer"].v_w + (
         1 - config["RMSprop_beta"]
     ) * np.multiply(layer["layer"].L_theta_by_w, layer["layer"].L_theta_by_w)
@@ -59,6 +81,14 @@ def RMSprop(layer: dict, learning_rate: float, config: dict):
 
 
 def Adam(layer: dict, learning_rate: float, epoch: int, config: dict):
+    """_summary_
+
+    Args:
+        layer (dict): dictionary of layers
+        learning_rate (float): the learning rate to be applied
+        epoch (int): The epoch run number
+        config (dict): configurations
+    """
 
     ## Setup the Momuntum side of the optimization
     layer["layer"].m_w = (
@@ -106,6 +136,14 @@ def Adam(layer: dict, learning_rate: float, epoch: int, config: dict):
 
 
 def Nadam(layer: dict, learning_rate: float, epoch: int, config: dict):
+    """_summary_
+
+    Args:
+        layer (dict): dictionary of layers
+        learning_rate (float): the learning rate to be applied
+        epoch (int): The epoch run number
+        config (dict): configurations
+    """
 
     ## Setup the Momuntum side of the optimization
     layer["layer"].m_w = (

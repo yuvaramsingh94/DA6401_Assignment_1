@@ -5,31 +5,39 @@ from optimizers import SGD, momentum, Adam, Nadam, RMSprop
 
 
 class NeuralNetwork:
+    """
+    The neural network class
+    """
+
     def __init__(
         self,
-        input_neuron: int = 784,
-        num_hidden_layers: int = 3,
-        neurons_per_hidden_layer: list = [32, 32, 32],
-        num_of_output_neuron: int = 10,
-        learning_rate: float = 0.0001,
-        hidden_activation: str = "sigmoid",
-        optimizer: str = "SGD",
         config: dict = {},
+        input_neuron: int = 784,
     ):
+        """
+        The multi layer neural network implementation
+
+        Args:
+            input_neuron (int, optional): shape of flattened input neuron. Defaults to 784.
+            config (dict, optional): _description_. Defaults to {}.
+        """
         self.input_neuron = input_neuron
-        self.num_hidden_layers = num_hidden_layers
-        assert self.num_hidden_layers == len(neurons_per_hidden_layer)
-        self.neurons_per_hidden_layer = neurons_per_hidden_layer
-        self.num_of_output_neuron = num_of_output_neuron
-        self.learning_rate = learning_rate
-        self.hidden_activation = hidden_activation
-        self.optimizer = optimizer
+        self.num_hidden_layers = config["num_hidden_layers"]
+        assert self.num_hidden_layers == len(config["neurons_per_hidden_layer"])
+        self.neurons_per_hidden_layer = config["neurons_per_hidden_layer"]
+        self.num_of_output_neuron = config["num_of_output_neuron"]
+        self.learning_rate = config["learning_rate"]
+        self.hidden_activation = config["hidden_activation"]
+        self.optimizer = config["optimizer"]
         self.config = config
         ## Build the NN
         self.build_nn()
 
     # wx+b
     def build_nn(self):
+        """
+        Build the multi layer neural network based on the configurations provided
+        """
         self.nn_dict = {}
         for layer_i, neurons_i in enumerate(self.neurons_per_hidden_layer):
             if layer_i == 0:  # first layer
@@ -62,7 +70,16 @@ class NeuralNetwork:
             )
         }
 
-    def forward_pass(self, x):
+    def forward_pass(self, x: np.array) -> np.array:
+        """
+        Perform the forward pass through all the layers
+
+        Args:
+            x (np.array): Input
+
+        Returns:
+            np.array: Output
+        """
         self.weight_l2 = []
         self.bias_l2 = []
         for layer in self.nn_dict.values():
@@ -77,6 +94,14 @@ class NeuralNetwork:
         return x
 
     def backpropagation(self, x_train: np.array, y_label: np.array):
+        """
+        Perform the backward pass to calculate the gradients for each
+        layers
+
+        Args:
+            x_train (np.array): Input
+            y_label (np.array): Input label
+        """
         reverse_layers = list(self.nn_dict.items())[::-1]
         for count, (layer_name, layer) in enumerate(reverse_layers):  # reverse the
 
@@ -103,6 +128,13 @@ class NeuralNetwork:
                 )
 
     def update(self, epoch: int):
+        """
+        Update the parameter based on the gradient and the optimizer
+        of choice
+
+        Args:
+            epoch (int): Number of the epoch
+        """
 
         for count, (_, layer) in enumerate(list(self.nn_dict.items())):
 
@@ -120,6 +152,9 @@ class NeuralNetwork:
                 Nadam(layer, self.learning_rate, epoch, self.config)
 
     def NAG_look_weight_update(self):
+        """
+        NAG: Implementation of the looking step
+        """
         for count, (_, layer) in enumerate(list(self.nn_dict.items())):
             layer["layer"].weight -= np.clip(
                 self.config["momentum_beta"] * layer["layer"].u_w, a_min=-1, a_max=1
@@ -129,6 +164,13 @@ class NeuralNetwork:
             )
 
     def NAG_leep_weight_update(self, temp_net: "NeuralNetwork"):
+        """
+        Implementation of the leeping step. Here is where we update the parameters
+
+        Args:
+            temp_net (NeuralNetwork): temporary object of the NN where we have updated the
+            weights using the known momuntum term
+        """
         for count, ((_, layer_actual), (_, layer_copy)) in enumerate(
             zip(list(self.nn_dict.items()), list(temp_net.nn_dict.items()))
         ):

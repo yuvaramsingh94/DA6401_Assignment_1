@@ -1,29 +1,44 @@
 import numpy as np
 from keras.datasets import fashion_mnist, mnist
 import argparse
+from typing import Tuple
 
 
 def accuracy(y_actual: list, y_pred: list) -> np.array:
-    """_summary_
+    """
+    Calculate the acuracy
 
     Args:
-        y_actual (list): List of one hot 
-        y_pred (list): _description_
+        y_actual (list): List of one hot
+        y_pred (list): prediction array
 
     Returns:
-        np.array: _description_
+        np.array: Mean of the accuracy
     """
     y_actual = np.concat(y_actual, axis=0)
     y_pred = np.concat(y_pred, axis=0)
 
     y_pred_classes = np.argmax(y_pred, axis=1)
     y_true_classes = np.argmax(y_actual, axis=1)
-
-    return np.mean(y_true_classes == y_pred_classes)
+    temp = y_true_classes == y_pred_classes
+    return np.mean(temp)
 
 
 ###############################
-def data_loader(dataset: str = "fashion_mnist", config: dict = {}):
+def data_loader(
+    dataset: str = "fashion_mnist", config: dict = {}
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Load the given dataset
+
+    Args:
+        dataset (str, optional): _description_. Defaults to "fashion_mnist".
+        config (dict, optional): _description_. Defaults to {}.
+
+    Returns:
+        Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]: The
+        train, valid and test split with X and Y. The input is standard normalized
+    """
     if dataset == "fashion_mnist":
         (x_Train, y_train_int), (x_test, y_test_int) = fashion_mnist.load_data()
     elif dataset == "mnist":
@@ -64,7 +79,16 @@ def data_loader(dataset: str = "fashion_mnist", config: dict = {}):
 
 def parse_arguments(
     default_config: dict,
-):
+) -> argparse.Namespace:
+    """
+    Parse the command line input provided by the user
+
+    Args:
+        default_config (dict): Default configurations
+
+    Returns:
+        argparse.Namespace: command line parser
+    """
     parser = argparse.ArgumentParser(
         description="Train a Neural Network with command-line configuration."
     )
@@ -206,7 +230,16 @@ def parse_arguments(
 
 
 def update_configuration(args, default_config: dict) -> dict:
-    """Updates the default configuration with command-line arguments."""
+    """
+    Updates the default configuration with command-line arguments.
+
+    Args:
+        args (_type_): cmd line parser
+        default_config (dict): default configuration dict
+
+    Returns:
+        dict: updated configuration dict
+    """
     config = default_config.copy()
     config["wandb_project"] = args.wandb_project
     config["wandb_entity"] = args.wandb_entity
