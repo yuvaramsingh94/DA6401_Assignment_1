@@ -90,7 +90,7 @@ class HiddenLayer:
         )
         self.L_theta_by_b = (
             np.expand_dims(self.L_theta_by_a.sum(axis=0), axis=-1)
-            + self.config["L2_regularisation"] * self.bias
+            # + self.config["L2_regularisation"] * self.bias ## removing L2 req using bias
         )
 
 
@@ -195,6 +195,6 @@ class OutputLayer:
         )
         self.L_theta_by_b = (
             np.expand_dims(self.L_theta_by_a.sum(axis=0), axis=-1)
-            + self.config["L2_regularisation"] * self.bias
+            # + self.config["L2_regularisation"] * self.bias ## removing L2 reg on bias
         )
         # print("Hi")

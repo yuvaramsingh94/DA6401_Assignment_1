@@ -97,9 +97,9 @@ def main():
             # Calcualte the loss
             # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
 
-            l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
-                np.concatenate(my_net.bias_l2)
-            )
+            l2_reg = np.sum(np.concatenate(my_net.weight_l2))  # + np.sum(
+            #    np.concatenate(my_net.bias_l2)
+            # )
 
             if config["loss_fn"] == "cross_entropy":
                 main_loss = cross_entropy(y_pred=op, y_label=train_y)
@@ -132,9 +132,9 @@ def main():
             y_pred_list.append(op)
             # Calcualte the loss
             # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-            l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
-                np.concatenate(my_net.bias_l2)
-            )
+            l2_reg = np.sum(np.concatenate(my_net.weight_l2))  # + np.sum(
+            #    np.concatenate(my_net.bias_l2)
+            # )
 
             if config["loss_fn"] == "cross_entropy":
                 main_loss = cross_entropy(y_pred=op, y_label=val_y)

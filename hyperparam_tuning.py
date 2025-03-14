@@ -32,6 +32,7 @@ sweep_configuration = {
     "parameters": {
         "learning_rate": {"max": 0.01, "min": 0.000001},
         "optimizer": {"values": ["sgd", "momentum", "nag", "rmsprop", "adam", "nadam"]},
+        "loss_fn": {"values": ["mean_squared_error", "cross_entropy"]},
         "neurons_per_hidden_layer": {"values": [32, 64, 128]},
         "num_hidden_layers": {"values": [3, 4, 5]},
         "L2_regularisation": {
@@ -52,7 +53,7 @@ def main():
 
     wandb.init(
         # Set the project where this run will be logged
-        project="Fashion-MNIST-sweep",
+        project="Fashion-MNIST-sweep-v2",
         # Track hyperparameters and run metadata
         # config=config,
     )
@@ -65,6 +66,7 @@ def main():
     ] * wandb.config.num_hidden_layers
     config["num_hidden_layers"] = wandb.config.num_hidden_layers
     config["L2_regularisation"] = wandb.config.L2_regularisation
+    config["loss_fn"] = wandb.config.loss_fn
     config["batch_size"] = wandb.config.batch_size
     config["weight_initialisation"] = wandb.config.weight_initialisation
     config["hidden_activation"] = wandb.config.hidden_activation
@@ -94,9 +96,9 @@ def main():
             # Calcualte the loss
             # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
 
-            l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
-                np.concatenate(my_net.bias_l2)
-            )
+            l2_reg = np.sum(np.concatenate(my_net.weight_l2))  # + np.sum(
+            #    np.concatenate(my_net.bias_l2)
+            # )
 
             if config["loss_fn"] == "cross_entropy":
                 main_loss = cross_entropy(y_pred=op, y_label=train_y)
@@ -129,9 +131,9 @@ def main():
             y_pred_list.append(op)
             # Calcualte the loss
             # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
-            l2_reg = np.sum(np.concatenate(my_net.weight_l2)) + np.sum(
-                np.concatenate(my_net.bias_l2)
-            )
+            l2_reg = np.sum(np.concatenate(my_net.weight_l2))  # + np.sum(
+            #    np.concatenate(my_net.bias_l2)
+            # )
 
             if config["loss_fn"] == "cross_entropy":
                 main_loss = cross_entropy(y_pred=op, y_label=val_y)
@@ -146,6 +148,6 @@ def main():
 
 
 ## initialize the HPT
-sweep_id = wandb.sweep(sweep=sweep_configuration, project="Fashion-MNIST-sweep")
+sweep_id = wandb.sweep(sweep=sweep_configuration, project="Fashion-MNIST-sweep-v2")
 
 wandb.agent(sweep_id, function=main, count=50)
