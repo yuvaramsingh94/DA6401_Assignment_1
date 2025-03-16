@@ -172,3 +172,4 @@ cython_debug/
 API_key.py
 wandb/*
 dummy.py
+assignment_1.ipynb
