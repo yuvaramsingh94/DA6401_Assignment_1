@@ -46,7 +46,7 @@ DA6401_Assignment_1/
 ```python hyperparam_tuning.py```
 ### Running training code
 ```python train.py```
-
+<br>
 you can pass the following commandline arguments.
 
 | Name | Default Value | Description |
