@@ -43,7 +43,9 @@ DA6401_Assignment_1/
 
 ## How to run
 ### Running hyperparameter tuning
-```python hyperparam_tuning.py```
+```
+python hyperparam_tuning.py
+```
 ### Running training code
 ```
 python train.py
