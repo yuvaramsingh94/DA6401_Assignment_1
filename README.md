@@ -12,7 +12,7 @@ Wandb key as environment variable
 ## a README file with clear instructions on training and evaluating the model (the 10 marks will be based on this)
 
 ## Folder organization
-
+```
 DA6401_Assignment_1/
 ├── .gitignore
 ├── activation.py
@@ -27,7 +27,7 @@ DA6401_Assignment_1/
 ├── requirments.txt
 ├── train.py
 ├── utils.py
-
+```
 ## File explaination
 - `activation.py`: Implementation of the activation functions. `sigmoid`,`tanh`,`ReLU`, and `identity`.
 - `API_key.py`: This file has the Wandb key. But, this file is not uploaded to github. added to .gitignore.
@@ -45,7 +45,9 @@ DA6401_Assignment_1/
 ### Running hyperparameter tuning
 ```python hyperparam_tuning.py```
 ### Running training code
-```python train.py``` 
+```
+python train.py
+``` 
 you can pass the following commandline arguments.
 
 | Name | Default Value | Description |
