@@ -9,27 +9,7 @@ from NeuralNetwork import NeuralNetwork
 from utils import accuracy, data_loader
 
 wandb.require("core")
-
-wandb.require("core")
-if "WANDB_API_KEY" in dict(os.environ).keys():
-    """
-    wandb.init(  # test
-        # Set the project where this run will be logged
-        project=config["wandb_project"],
-        # Track hyperparameters and run metadata
-        # config=config,
-    )
-    """
-    pass
-else:
-    print(
-        "WANDB_API_KEY environment variable is not set. Please set it or make a python file called "
-        "'API_key.py' add a single line WANDB_API = '<Your KEY>'"
-    )
-    from API_key import WANDB_API
-
-    wandb.login(key=WANDB_API)
-
+wandb.login()
 
 x_train, y_train, x_val, y_val, x_test, y_test = data_loader(
     dataset=config["dataset"], config=config
