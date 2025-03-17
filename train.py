@@ -15,16 +15,6 @@ import matplotlib.pyplot as plt
 ## from the pseudocode
 
 wandb.require("core")
-if "WANDB_API_KEY" in dict(os.environ).keys():
-    wandb.init()
-else:
-    print(
-        "WANDB_API_KEY environment variable is not set. Please set it or make a python file called "
-        "'API_key.py' add a single line WANDB_API = '<Your KEY>'"
-    )
-    from API_key import WANDB_API
-
-    wandb.login(key=WANDB_API)
 
 ## Get the commandline argument
 args = parse_arguments(default_config=config)
