@@ -12,12 +12,14 @@ wandb.require("core")
 
 wandb.require("core")
 if "WANDB_API_KEY" in dict(os.environ).keys():
+    """
     wandb.init(  # test
         # Set the project where this run will be logged
         project=config["wandb_project"],
         # Track hyperparameters and run metadata
         # config=config,
     )
+    """
 else:
     print(
         "WANDB_API_KEY environment variable is not set. Please set it or make a python file called "
