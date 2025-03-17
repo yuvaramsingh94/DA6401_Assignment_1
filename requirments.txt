@@ -2,3 +2,5 @@ numpy
 matplotlib
 keras
 tensorflow
+wandb
+tqdm
