@@ -7,14 +7,14 @@ to start with.
 """
 config = {
     "wandb_project": "Fashion_MNIST",
-    "wandb_entity": "experiment_v1",
+    "wandb_entity": "test2",
     "dataset": "fashion_mnist",
     "epochs": 10,
     "num_hidden_layers": 3,  # Number of hidden layer
-    "neurons_per_hidden_layer": [32],
+    "neurons_per_hidden_layer": [128],
     "num_of_output_neuron": 10,
-    "learning_rate": 0.0001,
-    "batch_size": 4,
+    "learning_rate": 0.006857163485944494,
+    "batch_size": 16,
     "hidden_activation": "ReLU",
     "optimizer": "adam",  # momentum
     "momentum_beta": 0.5,
@@ -23,8 +23,8 @@ config = {
     "adam_beta_1": 0.9,
     "adam_beta_2": 0.999,
     "validation_split": 0.1,
-    "weight_initialisation": "random",
-    "L2_regularisation": 0.0001,
+    "weight_initialisation": "Xavier",
+    "L2_regularisation": 0.0005,
     "loss_fn": "cross_entropy",  # mse
     ### To be set
 }
