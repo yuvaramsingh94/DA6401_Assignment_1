@@ -2,12 +2,9 @@
 
 Author : V M Vijaya Yuvaram Singh (DA24S015)
 
-## Errors to handle 
-RuntimeWarning: overflow encountered in reduce
 
-## TODO
-Wandb key as environment variable
-
+## Report
+https://wandb.ai/yuvaramsingh/Fashion-MNIST-sweep/reports/DA6401-Assignment-1-Yuvaram--VmlldzoxMTgwOTE1OQ
 
 ## a README file with clear instructions on training and evaluating the model (the 10 marks will be based on this)
 
@@ -39,7 +36,7 @@ DA6401_Assignment_1/
 - `optimizers.py`: Implemented `sgd`,`momuntum`,`nag`,`rmsprop`,`adam`, and `nadam`.
 - `train.py`: The main training python file. It can take command line arguments and also from `configuration.py` file.
 - `utils.py`: Implemented helper functions such as `accuracy`, `argparser`, `dataloader`
-- `requirments.txt`: The python pkg. mainly `numpy` and `keras`, `tensorflow` for dataset.
+- `requirments.txt`: The python pkg. mainly `wandb`, `numpy` and `keras`, `tensorflow` for dataset. Note without `tensorflow`, the Fashion MNIST loading through the error `No module named 'tensorflow'` 
 
 ## How to run
 ### Running hyperparameter tuning
