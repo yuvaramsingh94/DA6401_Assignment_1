@@ -12,7 +12,6 @@ from utils import accuracy, data_loader
 wandb.require("core")
 wandb.login(key=WANDB_API)
 
-## TODO: Check the MSE implementation
 
 x_train, y_train, x_val, y_val, x_test, y_test = data_loader(
     dataset=config["dataset"], config=config
@@ -24,25 +23,40 @@ print("Test", x_test.shape, y_test.shape)
 
 
 sweep_configuration = {
-    "method": "random",
+    "method": "bayes",
     "metric": {"goal": "maximize", "name": "val_accuracy"},
     "parameters": {
-        "learning_rate": {"max": 0.01, "min": 0.000001},
+        "learning_rate": {"max": 0.001, "min": 0.00001},
         "optimizer": {"values": ["sgd", "momentum", "nag", "rmsprop", "adam", "nadam"]},
-        "loss_fn": {"values": ["mean_squared_error", "cross_entropy"]},
+        "loss_fn": {
+            "values": [
+                "cross_entropy",
+                "mean_squared_error",
+            ]
+        },
         "neurons_per_hidden_layer": {"values": [32, 64, 128]},
-        "num_hidden_layers": {"values": [3, 4, 5]},
+        "num_hidden_layers": {"values": [3, 4, 5, 6, 7]},
         "L2_regularisation": {
             "values": [
                 0,
-                0.0005,
+                0.000001,
+                0.00001,
+                0.5,
             ]
-        },  # 0.5
+        },
         "batch_size": {"values": [4, 16, 32, 64]},
         "epochs": {"values": [5, 10]},
-        "weight_initialisation": {"values": ["random", "Xavier"]},
-        "hidden_activation": {"values": ["sigmoid", "tanh", "ReLU", "identity"]},
+        "weight_initialisation": {"values": ["Xavier"]},
+        "hidden_activation": {
+            "values": [
+                "sigmoid",
+                "tanh",
+                "ReLU",
+                "identity",
+            ]
+        },
     },
+    "early_terminate": {"type": "hyperband", "min_iter": 3, "eta": 3},
 }
 
 
@@ -59,7 +73,7 @@ def main():
         # Track hyperparameters and run metadata
         # config=config,
     )
-    wandb.run.name = f"H_{wandb.config.neurons_per_hidden_layer}_O_{wandb.config.optimizer}_a_{wandb.config.hidden_activation}_b_{wandb.config.batch_size}"
+    wandb.run.name = f"V2_H_{wandb.config.neurons_per_hidden_layer}_O_{wandb.config.optimizer}_a_{wandb.config.hidden_activation}_b_{wandb.config.batch_size}"
     ## Update the config dict with the hpt from sweep
     config["learning_rate"] = wandb.config.learning_rate
     config["optimizer"] = wandb.config.optimizer
@@ -140,7 +154,14 @@ def main():
             )
         val_accuracy = accuracy(y_list, y_pred_list)
 
-        wandb.log({"val_accuracy": val_accuracy})
+        wandb.log(
+            {
+                "val_accuracy": val_accuracy,
+                "train_accuracy": train_accuracy,
+                "Training loss": np.mean(training_loss_list),
+                "Validation loss": np.mean(validation_loss_list),
+            }
+        )
 
 
 ## initialize the HPT
