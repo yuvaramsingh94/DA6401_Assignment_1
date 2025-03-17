@@ -7,7 +7,7 @@ to start with.
 """
 config = {
     "wandb_project": "Fashion_MNIST",
-    "wandb_entity": "test2",
+    "wandb_entity": "Best_model",
     "dataset": "fashion_mnist",
     "epochs": 10,
     "num_hidden_layers": 3,  # Number of hidden layer
