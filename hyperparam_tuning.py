@@ -1,6 +1,5 @@
 import os
 import wandb
-from API_key import WANDB_API
 import numpy as np
 from loss_function import cross_entropy, mse
 import tqdm

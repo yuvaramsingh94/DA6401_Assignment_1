@@ -1,7 +1,6 @@
 import os
 import argparse
 import wandb
-
 import numpy as np
 from loss_function import cross_entropy, mse
 import tqdm
