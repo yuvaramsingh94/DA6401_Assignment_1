@@ -12,7 +12,7 @@ wandb.require("core")
 
 wandb.require("core")
 if "WANDB_API_KEY" in dict(os.environ).keys():
-    wandb.init(
+    wandb.init(  # test
         # Set the project where this run will be logged
         project="Fashion-MNIST-sweep-v2",
         # Track hyperparameters and run metadata

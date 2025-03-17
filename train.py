@@ -31,11 +31,12 @@ args = parse_arguments(default_config=config)
 config = update_configuration(args, default_config=config)
 
 if "WANDB_API_KEY" in dict(os.environ).keys():
-    wandb.init(
+    wandb.init(  # test
         project=config["wandb_project"],
         name=config["wandb_entity"],
         config=config,
     )
+
 else:
     print(
         "WANDB_API_KEY environment variable is not set. Please set it or make a python file called "
