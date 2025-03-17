@@ -11,10 +11,9 @@ from NeuralNetwork import NeuralNetwork
 from utils import accuracy, data_loader, parse_arguments, update_configuration
 import matplotlib.pyplot as plt
 
-## TODO: implement the identity activation - Done
-## TODO: write documentation
-## TODO: Image wandb - DOne
-## TODO: Readme
+
+## TODO: Check the NAG implementation with the learning rate update
+## from the pseudocode
 
 wandb.require("core")
 wandb.login(key=WANDB_API)
@@ -62,7 +61,7 @@ for i in range(10):
     axes[i].imshow(
         x_train[idx].reshape(28, 28), cmap="gray"
     )  # Use 'gray' colormap for Fashion MNIST
-    axes[i].set_title(class_names[i])
+    axes[i].set_title(class_names[i], fontsize=106)
     axes[i].axis("off")  # Hide axes ticks and labels
 
 # Adjust layout to prevent overlapping titles/labels
@@ -157,6 +156,45 @@ def main():
                 "Validation accucary": val_accuracy,
             }
         )
+    ## Predict on the test dataset
+    y_pred_list_test = []
+    y_list_test = []
+    for i in tqdm.tqdm(range(x_test.shape[0] // BATCH_SIZE)):
+        test_x = x_test[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
+        test_y = y_test[i * BATCH_SIZE : (i + 1) * BATCH_SIZE]
+        y_list_test.append(test_y)
+        op = my_net.forward_pass(test_x)
+        y_pred_list_test.append(op)
+        # Calcualte the loss
+        # print(f"The loss at try {i}", cross_entropy(y_pred = op, y_label = y_train[i*BATCH_SIZE: i*BATCH_SIZE + BATCH_SIZE]))
+        # l2_reg = np.sum(np.concatenate(my_net.weight_l2))  # + np.sum(
+        #    np.concatenate(my_net.bias_l2)
+        # )
+
+        if config["loss_fn"] == "cross_entropy":
+            main_loss = cross_entropy(y_pred=op, y_label=test_y)
+        elif config["loss_fn"] == "mean_squared_error":
+            main_loss = mse(y_pred=op, y_label=test_y)
+
+    test_accuracy = accuracy(y_list_test, y_pred_list_test)
+
+    ## Convert the test pred to plot
+    y_actual = np.concat(y_list_test, axis=0)
+    y_pred = np.concat(y_pred_list_test, axis=0)
+
+    y_pred_classes = np.argmax(y_pred, axis=1)
+    y_true_classes = np.argmax(y_actual, axis=1)
+    wandb.log(
+        {
+            "Test_confusion_matrix": wandb.plot.confusion_matrix(
+                probs=None,
+                preds=y_pred_classes,
+                y_true=y_true_classes,
+                class_names=class_names,
+            )
+        }
+    )
+    wandb.log({"Test accuracy": test_accuracy})
     wandb.finish()
 
 
