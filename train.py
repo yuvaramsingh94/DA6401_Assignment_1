@@ -30,11 +30,27 @@ else:
 args = parse_arguments(default_config=config)
 config = update_configuration(args, default_config=config)
 
-wandb.init(
-    project=config["wandb_project"],
-    name=config["wandb_entity"],
-    config=config,
-)
+if "WANDB_API_KEY" in dict(os.environ).keys():
+    wandb.init(
+        project=config["wandb_project"],
+        name=config["wandb_entity"],
+        config=config,
+    )
+else:
+    print(
+        "WANDB_API_KEY environment variable is not set. Please set it or make a python file called "
+        "'API_key.py' add a single line WANDB_API = '<Your KEY>'"
+    )
+    from API_key import WANDB_API
+
+    wandb.login(key=WANDB_API)
+    wandb.init(
+        project=config["wandb_project"],
+        name=config["wandb_entity"],
+        config=config,
+    )
+
+
 x_train, y_train, x_val, y_val, x_test, y_test = data_loader(
     dataset=config["dataset"], config=config
 )
