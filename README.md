@@ -2,9 +2,11 @@
 
 Author : V M Vijaya Yuvaram Singh (DA24S015)
 
-
 ## Report
-https://wandb.ai/yuvaramsingh/Fashion-MNIST-sweep/reports/DA6401-Assignment-1-Yuvaram--VmlldzoxMTgwOTE1OQ
+[Link](https://wandb.ai/yuvaramsingh/Fashion-MNIST-sweep/reports/DA6401-Assignment-1-Yuvaram--VmlldzoxMTgwOTE1OQ)
+
+## Github
+[Link](https://github.com/yuvaramsingh94/DA6401_Assignment_1)
 
 ## a README file with clear instructions on training and evaluating the model (the 10 marks will be based on this)
 
