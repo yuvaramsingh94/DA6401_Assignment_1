@@ -8,8 +8,6 @@ Author : V M Vijaya Yuvaram Singh (DA24S015)
 ## Github
 [Link](https://github.com/yuvaramsingh94/DA6401_Assignment_1)
 
-## a README file with clear instructions on training and evaluating the model (the 10 marks will be based on this)
-
 ## Folder organization
 ```
 DA6401_Assignment_1/
