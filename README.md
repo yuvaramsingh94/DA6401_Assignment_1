@@ -25,7 +25,7 @@ DA6401_Assignment_1/
 ├── train.py
 ├── utils.py
 ```
-## File explaination
+## File explanation
 - `activation.py`: Implementation of the activation functions. `sigmoid`,`tanh`,`ReLU`, and `identity`.
 - `API_key.py`: This file has the Wandb key. But, this file is not uploaded to github. added to .gitignore.
 - `configuration.py`: This has the configuration for building the model. This is the best performing configuration.
@@ -47,7 +47,7 @@ python hyperparam_tuning.py
 ```
 python train.py
 ``` 
-you can pass the following commandline arguments.
+You can pass the following commandline arguments.
 
 | Name | Default Value | Description |
 | :---: | :-------------: | :----------- |
