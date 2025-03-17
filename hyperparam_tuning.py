@@ -14,7 +14,7 @@ wandb.require("core")
 if "WANDB_API_KEY" in dict(os.environ).keys():
     wandb.init(  # test
         # Set the project where this run will be logged
-        project="Fashion-MNIST-sweep-v2",
+        project=config["wandb_project"],
         # Track hyperparameters and run metadata
         # config=config,
     )
@@ -84,7 +84,7 @@ def main():
 
     wandb.init(
         # Set the project where this run will be logged
-        project="Fashion-MNIST-sweep-v2",
+        project=config["wandb_project"],
         # Track hyperparameters and run metadata
         # config=config,
     )
@@ -180,6 +180,6 @@ def main():
 
 
 ## initialize the HPT
-sweep_id = wandb.sweep(sweep=sweep_configuration, project="Fashion-MNIST-sweep-v2")
+sweep_id = wandb.sweep(sweep=sweep_configuration, project=config["wandb_project"])
 
 wandb.agent(sweep_id, function=main, count=50)
