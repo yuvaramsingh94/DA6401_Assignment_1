@@ -20,6 +20,7 @@ if "WANDB_API_KEY" in dict(os.environ).keys():
         # config=config,
     )
     """
+    pass
 else:
     print(
         "WANDB_API_KEY environment variable is not set. Please set it or make a python file called "
